@@ -46,7 +46,8 @@ public class RoleServiceImpl implements RoleService {
         return mapToDto(updatedRole);
     }
 
-    private Role getRoleEntityById(Long id) {
+    @Override
+    public Role getRoleEntityById(Long id) {
         return roleRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Role not found for id: " + id));
     }
 

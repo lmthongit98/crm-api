@@ -1,6 +1,7 @@
 package com.crm.service;
 
 import com.crm.dto.RoleDto;
+import com.crm.model.role.Role;
 
 import java.util.List;
 
@@ -12,4 +13,6 @@ public interface RoleService {
     RoleDto findById(Long id);
 
     RoleDto update(Long id, RoleDto roleDto);
+
+    Role getRoleEntityById(Long id);
 }
