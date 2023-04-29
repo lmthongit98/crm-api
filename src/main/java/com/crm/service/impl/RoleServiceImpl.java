@@ -27,7 +27,7 @@ public class RoleServiceImpl implements RoleService {
 
     @Override
     public RoleDto save(RoleDto roleDto) {
-        roleDto.setName(roleDto.getName().toUpperCase());
+        roleDto.setName(roleDto.getName());
         Role savedRole = roleRepository.save(mapToEntity(roleDto));
         return mapToDto(savedRole);
     }
@@ -40,7 +40,7 @@ public class RoleServiceImpl implements RoleService {
     @Override
     public RoleDto update(Long id, RoleDto roleDto) {
         Role role = getRoleEntityById(id);
-        role.setName(roleDto.getName().toUpperCase());
+        role.setName(roleDto.getName());
         role.setDescription(roleDto.getDescription());
         Role updatedRole = roleRepository.save(role);
         return mapToDto(updatedRole);

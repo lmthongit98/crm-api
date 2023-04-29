@@ -1,6 +1,8 @@
 package com.crm.controller;
 
 import com.crm.dto.RoleDto;
+import com.crm.security.anotations.HasEndpointAuthority;
+import com.crm.security.enums.SecurityAuthority;
 import com.crm.service.RoleService;
 import com.crm.util.ErrorHelper;
 import jakarta.validation.Valid;
@@ -19,6 +21,7 @@ public class RoleController {
 
     private final RoleService roleService;
 
+    @HasEndpointAuthority(SecurityAuthority.GET_ALL_ROLES)
     @GetMapping
     public Object findAll() {
         List<RoleDto> roles = roleService.findAll();

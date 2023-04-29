@@ -1,10 +1,8 @@
 package com.crm.model.role;
 
 import com.crm.model.BaseEntity;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.ManyToMany;
-import jakarta.persistence.Table;
+import com.crm.security.enums.SecurityAuthority;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -21,7 +19,9 @@ import java.util.Set;
 @Table(name = "_role")
 public class Role extends BaseEntity {
     @Column(name = "name", unique = true, nullable = false, length = 100)
-    private String name;
+    @Enumerated(EnumType.STRING)
+    private SecurityAuthority name;
+
     @Column(name = "description")
     private String description;
 
