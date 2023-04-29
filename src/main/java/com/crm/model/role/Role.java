@@ -20,8 +20,8 @@ import java.util.Set;
 @Entity
 @Table(name = "_role")
 public class Role extends BaseEntity {
-    @Column(name = "url", unique = true, nullable = false, length = 100)
-    private String url;
+    @Column(name = "name", unique = true, nullable = false, length = 100)
+    private String name;
     @Column(name = "description")
     private String description;
 
