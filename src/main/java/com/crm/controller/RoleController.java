@@ -5,6 +5,10 @@ import com.crm.security.anotations.HasEndpointAuthority;
 import com.crm.security.enums.SecurityAuthority;
 import com.crm.service.RoleService;
 import com.crm.util.ErrorHelper;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -17,10 +21,16 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("api/v1/roles")
+@Tag(
+        name = "REST APIs for Role Resource"
+)
 public class RoleController {
 
     private final RoleService roleService;
 
+    @Operation(summary = "Find all roles", description = "Find all roles in the database")
+    @ApiResponse(responseCode = "200", description = "Http Status 200 OK")
+    @SecurityRequirement(name = "Bear Authentication")
     @HasEndpointAuthority(SecurityAuthority.GET_ALL_ROLES)
     @GetMapping
     public Object findAll() {
@@ -28,12 +38,18 @@ public class RoleController {
         return new ResponseEntity<>(roles, HttpStatus.OK);
     }
 
+    @Operation(summary = "Find role by id", description = "Find role by id in the database")
+    @ApiResponse(responseCode = "200", description = "Http Status 200 OK")
+    @SecurityRequirement(name = "Bear Authentication")
     @GetMapping("/{role-id}")
     public Object findRoleById(@PathVariable("role-id") Long id) {
         RoleDto role = roleService.findById(id);
         return new ResponseEntity<>(role, HttpStatus.OK);
     }
 
+    @Operation(summary = "Crate role", description = "Create a new role and save to database")
+    @ApiResponse(responseCode = "201", description = "Http Status 201 OK")
+    @SecurityRequirement(name = "Bear Authentication")
     @PostMapping
     public Object createNewRole(@RequestBody @Valid RoleDto roleDto,
                                 BindingResult bindingResult) {
@@ -44,6 +60,9 @@ public class RoleController {
         return new ResponseEntity<>(savedRole, HttpStatus.CREATED);
     }
 
+    @Operation(summary = "Update role by id", description = "Update role by id in the database")
+    @ApiResponse(responseCode = "200", description = "Http Status 200 OK")
+    @SecurityRequirement(name = "Bear Authentication")
     @PutMapping("/{role-id}")
     public Object updateRole(@PathVariable("role-id") Long id, @RequestBody @Valid RoleDto roleDto,
                              BindingResult bindingResult) {

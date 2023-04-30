@@ -6,6 +6,7 @@ import com.crm.security.anotations.HasEndpointAuthority;
 import com.crm.security.enums.SecurityAuthority;
 import com.crm.service.UserService;
 import com.crm.util.ErrorHelper;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -20,6 +21,7 @@ public class UserController {
 
     private final UserService userService;
 
+    @SecurityRequirement(name = "Bear Authentication")
     @HasEndpointAuthority(SecurityAuthority.CREATE_USER)
     @PostMapping
     public Object createNewUser(@RequestBody @Valid UserDto userDto, BindingResult bindingResult) {
@@ -30,6 +32,7 @@ public class UserController {
         return new ResponseEntity<>(savedUser, HttpStatus.CREATED);
     }
 
+    @SecurityRequirement(name = "Bear Authentication")
     @GetMapping ("/{username}/roles")
     public Object findRoleByUsername(@PathVariable("username") String username) {
         UserWithRolesDto userWithRolesDto = userService.findUserWithRolesByUsername(username);

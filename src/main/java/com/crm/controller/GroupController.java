@@ -4,6 +4,7 @@ import com.crm.dto.GroupDto;
 import com.crm.dto.GroupWithRolesDto;
 import com.crm.service.GroupService;
 import com.crm.util.ErrorHelper;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -22,18 +23,21 @@ public class GroupController {
 
     public final GroupService groupService;
 
+    @SecurityRequirement(name = "Bear Authentication")
     @GetMapping
     public Object findAllGroups() {
         List<GroupDto> groups = groupService.findAll();
         return new ResponseEntity<>(groups, HttpStatus.OK);
     }
 
+    @SecurityRequirement(name = "Bear Authentication")
     @GetMapping("/{group-id}")
     public Object findGroupById(@PathVariable("group-id") Long groupId) {
         GroupWithRolesDto group = groupService.findById(groupId);
         return new ResponseEntity<>(group, HttpStatus.OK);
     }
 
+    @SecurityRequirement(name = "Bear Authentication")
     @PostMapping
     public Object createNewGroup(@Valid @RequestBody GroupDto groupDto,
                                  BindingResult result) {
@@ -44,6 +48,7 @@ public class GroupController {
         return new ResponseEntity<>(group, HttpStatus.OK);
     }
 
+    @SecurityRequirement(name = "Bear Authentication")
     @PutMapping("/{group-id}")
     public Object updateGroup(@PathVariable("group-id") Long groupId, @Valid @RequestBody GroupDto groupDto,
                               BindingResult result) {
@@ -54,6 +59,7 @@ public class GroupController {
         return new ResponseEntity<>(group, HttpStatus.OK);
     }
 
+    @SecurityRequirement(name = "Bear Authentication")
     @PostMapping("/add-role/{group-id}/{role-id}")
     public Object addRole(@PathVariable(name = "group-id") @NotNull Long groupId,
                           @PathVariable(name = "role-id") @NotNull Long roleId) {
@@ -61,6 +67,7 @@ public class GroupController {
         return new ResponseEntity<>(group, HttpStatus.OK);
     }
 
+    @SecurityRequirement(name = "Bear Authentication")
     @PostMapping("/remove-role/{group-id}/{role-id}")
     public Object removeRole(@PathVariable(name = "group-id") @NotNull Long groupId,
                              @PathVariable(name = "role-id") @NotNull Long roleId) {
@@ -68,12 +75,14 @@ public class GroupController {
         return new ResponseEntity<>(group, HttpStatus.OK);
     }
 
+    @SecurityRequirement(name = "Bear Authentication")
     @PostMapping("/add-user/{group-id}/{username}")
     public void addUser(@PathVariable(name = "group-id") @NotNull Long groupId,
                         @PathVariable(name = "username") @NotBlank String username) {
         groupService.addUser(groupId, username);
     }
 
+    @SecurityRequirement(name = "Bear Authentication")
     @PostMapping("/remove-user/{group-id}/{username}")
     public void removeUser(@PathVariable(name = "group-id") @NotNull Long groupId,
                            @PathVariable(name = "username") @NotBlank String username) {
