@@ -43,4 +43,14 @@ public class Group extends BaseEntity {
         role.getGroups().remove(this);
     }
 
+    public void addUser(User user) {
+        this.users.add(user);
+        user.setGroup(this);
+    }
+
+    public void removeUser(User user) {
+        this.users.remove(user);
+        user.setGroup(null);
+    }
+
 }

@@ -5,9 +5,11 @@ import com.crm.dto.GroupWithRolesDto;
 import com.crm.exception.ResourceNotFoundException;
 import com.crm.model.role.Group;
 import com.crm.model.role.Role;
+import com.crm.model.user.User;
 import com.crm.repository.GroupRepository;
 import com.crm.service.GroupService;
 import com.crm.service.RoleService;
+import com.crm.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,7 @@ public class GroupServiceImpl implements GroupService {
     private final GroupRepository groupRepository;
     private final ModelMapper modelMapper;
     private final RoleService roleService;
+    private final UserService userService;
 
     @Override
     public List<GroupDto> findAll() {
@@ -60,6 +63,22 @@ public class GroupServiceImpl implements GroupService {
         group.setDescription(groupDto.getDescription());
         Group updatedGroup = groupRepository.save(group);
         return mapToDto(updatedGroup);
+    }
+
+    @Override
+    public void addUser(Long groupId, String username) {
+        User user = userService.findByUsername(username);
+        Group group = getGroupEntityById(groupId);
+        group.addUser(user);
+        groupRepository.save(group);
+    }
+
+    @Override
+    public void removeUser(Long groupId, String username) {
+        User user = userService.findByUsername(username);
+        Group group = getGroupEntityById(groupId);
+        group.removeUser(user);
+        groupRepository.save(group);
     }
 
     @Override

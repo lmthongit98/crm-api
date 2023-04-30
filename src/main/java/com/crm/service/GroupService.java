@@ -17,4 +17,8 @@ public interface GroupService {
     GroupWithRolesDto removeRole(Long groupId, Long roleId);
 
     GroupDto update(Long groupId, GroupDto groupDto);
+
+    void addUser(Long groupId, String username);
+
+    void removeUser(Long groupId, String username);
 }

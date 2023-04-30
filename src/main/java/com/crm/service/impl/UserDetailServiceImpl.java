@@ -1,6 +1,5 @@
-package com.crm.service;
+package com.crm.service.impl;
 
-import com.crm.model.role.Role;
 import com.crm.model.user.User;
 import com.crm.repository.UserRepository;
 import org.springframework.security.core.GrantedAuthority;
@@ -14,11 +13,11 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
-public class CustomUserDetailService implements UserDetailsService {
+public class UserDetailServiceImpl implements UserDetailsService {
 
     private UserRepository userRepository;
 
-    public CustomUserDetailService(UserRepository userRepository) {
+    public UserDetailServiceImpl(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
 

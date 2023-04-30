@@ -5,6 +5,7 @@ import com.crm.dto.GroupWithRolesDto;
 import com.crm.service.GroupService;
 import com.crm.util.ErrorHelper;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -62,9 +63,22 @@ public class GroupController {
 
     @PostMapping("/remove-role/{group-id}/{role-id}")
     public Object removeRole(@PathVariable(name = "group-id") @NotNull Long groupId,
-                          @PathVariable(name = "role-id") @NotNull Long roleId) {
+                             @PathVariable(name = "role-id") @NotNull Long roleId) {
         GroupWithRolesDto group = groupService.removeRole(groupId, roleId);
         return new ResponseEntity<>(group, HttpStatus.OK);
     }
+
+    @PostMapping("/add-user/{group-id}/{username}")
+    public void addUser(@PathVariable(name = "group-id") @NotNull Long groupId,
+                        @PathVariable(name = "username") @NotBlank String username) {
+        groupService.addUser(groupId, username);
+    }
+
+    @PostMapping("/remove-user/{group-id}/{username}")
+    public void removeUser(@PathVariable(name = "group-id") @NotNull Long groupId,
+                           @PathVariable(name = "username") @NotBlank String username) {
+        groupService.removeUser(groupId, username);
+    }
+
 
 }
