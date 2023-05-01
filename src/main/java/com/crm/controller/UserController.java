@@ -7,7 +7,7 @@ import com.crm.dto.UserWithRolesDto;
 import com.crm.security.anotations.HasAnyPermissions;
 import com.crm.security.enums.Permission;
 import com.crm.service.UserService;
-import com.crm.util.ErrorHelper;
+import com.crm.common.util.ErrorHelper;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

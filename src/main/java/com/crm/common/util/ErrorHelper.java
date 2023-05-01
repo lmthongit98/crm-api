@@ -1,4 +1,4 @@
-package com.crm.util;
+package com.crm.common.util;
 
 import lombok.experimental.UtilityClass;
 import org.springframework.context.support.DefaultMessageSourceResolvable;

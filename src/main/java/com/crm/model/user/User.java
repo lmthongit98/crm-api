@@ -1,12 +1,17 @@
 package com.crm.model.user;
 
 import com.crm.model.BaseEntity;
+import com.crm.model.project.Project;
+import com.crm.model.project.Task;
 import com.crm.model.role.Group;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
+
+import java.util.HashSet;
+import java.util.Set;
 
 @Getter
 @Setter
@@ -55,5 +60,11 @@ public class User extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_id")
     private Group group;
+
+    @OneToMany(mappedBy = "assignee")
+    private Set<Task> tasks;
+
+    @ManyToMany(mappedBy = "members")
+    private Set<Project> projects = new HashSet<>();
 
 }

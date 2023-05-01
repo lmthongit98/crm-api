@@ -2,7 +2,7 @@ package com.crm.validation.validator;
 
 import com.crm.model.user.User;
 import com.crm.repository.UserRepository;
-import com.crm.util.ValidatorUtils;
+import com.crm.common.util.ValidatorUtils;
 import com.crm.validation.anotation.UniqueEmail;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;

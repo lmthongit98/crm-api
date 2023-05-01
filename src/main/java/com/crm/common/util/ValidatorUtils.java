@@ -1,4 +1,4 @@
-package com.crm.util;
+package com.crm.common.util;
 
 import jakarta.validation.ConstraintValidatorContext;
 import lombok.experimental.UtilityClass;

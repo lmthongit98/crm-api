@@ -7,4 +7,8 @@ public enum Permission {
     GROUP_EDIT,
     USER_VIEW,
     USER_EDIT,
+    PROJECT_VIEW,
+    PROJECT_EDIT,
+    TASK_VIEW,
+    TASK_EDIT
 }

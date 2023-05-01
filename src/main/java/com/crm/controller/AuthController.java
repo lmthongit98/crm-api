@@ -2,7 +2,7 @@ package com.crm.controller;
 
 import com.crm.dto.LoginDto;
 import com.crm.service.AuthService;
-import com.crm.util.ErrorHelper;
+import com.crm.common.util.ErrorHelper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

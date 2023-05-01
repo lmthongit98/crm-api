@@ -5,7 +5,7 @@ import com.crm.dto.GroupWithRolesDto;
 import com.crm.security.anotations.HasAnyPermissions;
 import com.crm.security.enums.Permission;
 import com.crm.service.GroupService;
-import com.crm.util.ErrorHelper;
+import com.crm.common.util.ErrorHelper;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
