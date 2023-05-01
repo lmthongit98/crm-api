@@ -1,6 +1,6 @@
 package com.crm.repository;
 
-import com.crm.model.role.Group;
+import com.crm.model.Group;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

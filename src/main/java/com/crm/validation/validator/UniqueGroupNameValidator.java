@@ -1,6 +1,6 @@
 package com.crm.validation.validator;
 
-import com.crm.model.role.Group;
+import com.crm.model.Group;
 import com.crm.repository.GroupRepository;
 import com.crm.common.util.ValidatorUtils;
 import com.crm.validation.anotation.UniqueGroupName;

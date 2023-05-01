@@ -5,7 +5,7 @@ import com.crm.dto.request.UserRequestDto;
 import com.crm.dto.UserToUpdateDto;
 import com.crm.dto.UserWithRolesDto;
 import com.crm.dto.response.UserResponseDto;
-import com.crm.model.user.User;
+import com.crm.model.User;
 
 import java.util.List;
 

@@ -5,7 +5,7 @@ import com.crm.dto.request.UserRequestDto;
 import com.crm.dto.response.UserResponseDto;
 import com.crm.exception.BadRequestException;
 import com.crm.exception.ResourceNotFoundException;
-import com.crm.model.user.User;
+import com.crm.model.User;
 import com.crm.repository.UserRepository;
 import com.crm.service.UserService;
 import lombok.RequiredArgsConstructor;

@@ -1,6 +1,6 @@
 package com.crm.dto.request;
 
-import com.crm.model.user.UserStatus;
+import com.crm.common.enums.UserStatus;
 import com.crm.validation.anotation.UniqueEmail;
 import com.crm.validation.anotation.UniqueUsername;
 import jakarta.validation.constraints.NotBlank;

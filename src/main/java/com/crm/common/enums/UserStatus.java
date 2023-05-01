@@ -1,4 +1,4 @@
-package com.crm.model.user;
+package com.crm.common.enums;
 
 public enum UserStatus {
     ACTIVE,

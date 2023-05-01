@@ -1,8 +1,5 @@
 package com.crm.dto;
 
-import com.crm.model.user.UserStatus;
-import com.crm.validation.anotation.UniqueEmail;
-import com.crm.validation.anotation.UniqueUsername;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;

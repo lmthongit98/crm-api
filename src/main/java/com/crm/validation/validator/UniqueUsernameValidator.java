@@ -1,6 +1,6 @@
 package com.crm.validation.validator;
 
-import com.crm.model.user.User;
+import com.crm.model.User;
 import com.crm.repository.UserRepository;
 import com.crm.common.util.ValidatorUtils;
 import com.crm.validation.anotation.UniqueUsername;

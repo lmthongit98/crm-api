@@ -1,9 +1,6 @@
-package com.crm.model.user;
+package com.crm.model;
 
-import com.crm.model.BaseEntity;
-import com.crm.model.project.Project;
-import com.crm.model.project.Task;
-import com.crm.model.role.Group;
+import com.crm.common.enums.UserStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

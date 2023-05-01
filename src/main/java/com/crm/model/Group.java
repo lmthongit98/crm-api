@@ -1,7 +1,5 @@
-package com.crm.model.role;
+package com.crm.model;
 
-import com.crm.model.BaseEntity;
-import com.crm.model.user.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

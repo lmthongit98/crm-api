@@ -2,7 +2,7 @@ package com.crm.service.impl;
 
 import com.crm.dto.RoleDto;
 import com.crm.exception.ResourceNotFoundException;
-import com.crm.model.role.Role;
+import com.crm.model.Role;
 import com.crm.repository.RoleRepository;
 import com.crm.service.RoleService;
 import lombok.RequiredArgsConstructor;

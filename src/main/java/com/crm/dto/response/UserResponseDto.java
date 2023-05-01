@@ -1,6 +1,6 @@
 package com.crm.dto.response;
 
-import com.crm.model.user.UserStatus;
+import com.crm.common.enums.UserStatus;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

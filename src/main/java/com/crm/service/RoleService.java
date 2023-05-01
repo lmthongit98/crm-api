@@ -1,7 +1,7 @@
 package com.crm.service;
 
 import com.crm.dto.RoleDto;
-import com.crm.model.role.Role;
+import com.crm.model.Role;
 
 import java.util.List;
 

@@ -1,6 +1,5 @@
-package com.crm.model.role;
+package com.crm.model;
 
-import com.crm.model.BaseEntity;
 import com.crm.security.enums.Permission;
 import jakarta.persistence.*;
 import lombok.Getter;
