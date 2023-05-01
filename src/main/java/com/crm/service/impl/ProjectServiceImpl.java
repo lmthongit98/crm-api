@@ -80,6 +80,22 @@ public class ProjectServiceImpl implements ProjectService {
         return mapToProjectWithMembersDto(project);
     }
 
+    @Override
+    public void deleteById(Long id) {
+        Project project = findProjectById(id);
+        projectRepository.delete(project);
+    }
+
+    @Override
+    public ProjectResponseDto updateProject(Long projectId, ProjectRequestDto projectRequestDto) {
+        Project project = findProjectById(projectId);
+        project.setName(projectRequestDto.getName());
+        project.setDescription(projectRequestDto.getDescription());
+        project.setType(projectRequestDto.getType());
+        Project savedProject = projectRepository.save(project);
+        return mapToDto(savedProject);
+    }
+
     private Project findProjectById(Long id) {
         return projectRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Project not found for id: " + id));
     }

@@ -61,6 +61,22 @@ public class ProjectController {
     }
 
     @SecurityRequirement(name = "Bear Authentication")
+    @HasAnyPermissions(permissions = Permission.PROJECT_DELETION)
+    @DeleteMapping("/{id}")
+    public void createProject(@PathVariable("id") Long id) {
+        projectService.deleteById(id);
+    }
+
+    @SecurityRequirement(name = "Bear Authentication")
+    @HasAnyPermissions(permissions = Permission.PROJECT_EDIT)
+    @PutMapping("/{id}")
+    public Object updateProject(@PathVariable("id") Long projectId, @RequestBody @Valid ProjectRequestDto projectRequestDto,
+                                BindingResult bindingResult) {
+        ProjectResponseDto dto = projectService.updateProject(projectId, projectRequestDto);
+        return new ResponseEntity<>(dto, HttpStatus.OK);
+    }
+
+    @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.PROJECT_EDIT)
     @PostMapping("/add-members/{project-id}")
     public Object addMembers(@PathVariable("project-id") @NotNull Long projectId, @RequestBody List<Long> userIds) {

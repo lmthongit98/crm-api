@@ -17,4 +17,8 @@ public interface ProjectService {
     ProjectResponsePagingDto getAllProjects(int pageNo, int pageSize, String sortBy, String sortDir);
 
     ProjectWithMembersDto findById(Long id);
+
+    void deleteById(Long id);
+
+    ProjectResponseDto updateProject(Long projectId, ProjectRequestDto projectRequestDto);
 }
