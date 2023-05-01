@@ -45,9 +45,9 @@ public class Project extends BaseEntity {
         task.setProject(this);
     }
 
-    public void addMember(User member) {
-        this.members.add(member);
-        member.getProjects().add(this);
+    public void addMember(Set<User> members) {
+        this.members.addAll(members);
+        members.forEach(member -> member.getProjects().add(this));
     }
 
     public void removeMember(User member) {

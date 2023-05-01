@@ -1,9 +1,10 @@
 package com.crm.controller;
 
 import com.crm.dto.PasswordDto;
-import com.crm.dto.UserDto;
+import com.crm.dto.request.UserRequestDto;
 import com.crm.dto.UserToUpdateDto;
 import com.crm.dto.UserWithRolesDto;
+import com.crm.dto.response.UserResponseDto;
 import com.crm.security.anotations.HasAnyPermissions;
 import com.crm.security.enums.Permission;
 import com.crm.service.UserService;
@@ -28,11 +29,11 @@ public class UserController {
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.USER_EDIT)
     @PostMapping
-    public Object createNewUser(@RequestBody @Valid UserDto userDto, BindingResult bindingResult) {
+    public Object createNewUser(@RequestBody @Valid UserRequestDto userRequestDto, BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
             return new ResponseEntity<>(ErrorHelper.getAllError(bindingResult), HttpStatus.BAD_REQUEST);
         }
-        UserDto savedUser = userService.save(userDto);
+        UserResponseDto savedUser = userService.save(userRequestDto);
         return new ResponseEntity<>(savedUser, HttpStatus.CREATED);
     }
 
@@ -43,7 +44,7 @@ public class UserController {
         if (bindingResult.hasErrors()) {
             return new ResponseEntity<>(ErrorHelper.getAllError(bindingResult), HttpStatus.BAD_REQUEST);
         }
-        UserDto updatedUser = userService.update(id, userToUpdateDto);
+        UserResponseDto updatedUser = userService.update(id, userToUpdateDto);
         return new ResponseEntity<>(updatedUser, HttpStatus.OK);
     }
 
@@ -62,7 +63,7 @@ public class UserController {
     @HasAnyPermissions(permissions = Permission.USER_VIEW)
     @GetMapping
     public Object getAllUsers() {
-        List<UserDto> users = userService.findAll();
+        List<UserResponseDto> users = userService.findAll();
         return new ResponseEntity<>(users, HttpStatus.OK);
     }
 

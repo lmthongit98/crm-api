@@ -1,9 +1,8 @@
-package com.crm.dto;
+package com.crm.dto.request;
 
 import com.crm.model.user.UserStatus;
 import com.crm.validation.anotation.UniqueEmail;
 import com.crm.validation.anotation.UniqueUsername;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -15,15 +14,12 @@ import lombok.experimental.SuperBuilder;
 @Setter
 @NoArgsConstructor
 @SuperBuilder
-public class UserDto {
-    private Long id;
-
+public class UserRequestDto {
     @Size(min = 3, max = 100, message = "Username length must be between 3 and 100")
     @UniqueUsername(message = "Username is already existed.")
     @NotBlank
     private String username;
 
-    @JsonInclude(JsonInclude.Include.NON_NULL)
     @NotBlank
     private String password;
 

@@ -1,6 +1,8 @@
 package com.crm.service.impl;
 
 import com.crm.dto.*;
+import com.crm.dto.request.UserRequestDto;
+import com.crm.dto.response.UserResponseDto;
 import com.crm.exception.BadRequestException;
 import com.crm.exception.ResourceNotFoundException;
 import com.crm.model.user.User;
@@ -25,13 +27,11 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
 
     @Override
-    public UserDto save(UserDto userDto) {
-        User user = mapToEntity(userDto);
-        user.setPassword(passwordEncoder.encode(userDto.getPassword()));
+    public UserResponseDto save(UserRequestDto userRequestDto) {
+        User user = mapToEntity(userRequestDto);
+        user.setPassword(passwordEncoder.encode(userRequestDto.getPassword()));
         User savedUser = userRepository.save(user);
-        UserDto dto = mapToDto(savedUser);
-        dto.setPassword(null);
-        return dto;
+        return mapToDto(savedUser);
     }
 
     @Override
@@ -56,17 +56,13 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public List<UserDto> findAll() {
+    public List<UserResponseDto> findAll() {
         List<User> users = userRepository.findAll();
-        return users.stream().map(user -> {
-            UserDto userDto = mapToDto(user);
-            userDto.setPassword(null);
-            return userDto;
-        }).collect(Collectors.toList());
+        return users.stream().map(this::mapToDto).collect(Collectors.toList());
     }
 
     @Override
-    public UserDto update(Long id, UserToUpdateDto userToUpdateDto) {
+    public UserResponseDto update(Long id, UserToUpdateDto userToUpdateDto) {
         User user = getUserEntityById(id);
         user.setDisplayName(userToUpdateDto.getUsername());
         if (!user.getUsername().equals(userToUpdateDto.getUsername())) {
@@ -102,12 +98,12 @@ public class UserServiceImpl implements UserService {
         return userRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("User not found for id: " + id));
     }
 
-    private UserDto mapToDto(User user) {
-        return modelMapper.map(user, UserDto.class);
+    private UserResponseDto mapToDto(User user) {
+        return modelMapper.map(user, UserResponseDto.class);
     }
 
-    private User mapToEntity(UserDto userDto) {
-        return modelMapper.map(userDto, User.class);
+    private User mapToEntity(UserRequestDto userRequestDto) {
+        return modelMapper.map(userRequestDto, User.class);
     }
 
 }
