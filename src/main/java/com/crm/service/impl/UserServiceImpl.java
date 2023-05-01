@@ -15,6 +15,7 @@ import org.springframework.util.CollectionUtils;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -53,6 +54,16 @@ public class UserServiceImpl implements UserService {
     @Override
     public User findByUsername(String username) {
         return userRepository.findByUsername(username).orElseThrow(() -> new ResourceNotFoundException("User not found for username: " + username));
+    }
+
+    @Override
+    public List<UserDto> findAll() {
+        List<User> users = userRepository.findAll();
+        return users.stream().map(user -> {
+            UserDto userDto = mapToDto(user);
+            userDto.setPassword(null);
+            return userDto;
+        }).collect(Collectors.toList());
     }
 
     private UserDto mapToDto(User user) {

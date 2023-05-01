@@ -1,7 +1,7 @@
 package com.crm.security.authorization;
 
 import com.crm.exception.UnauthorizedException;
-import com.crm.security.anotations.HasEndpointAuthority;
+import com.crm.security.anotations.HasAnyPermissions;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.Aspect;
@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Collection;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 @Slf4j
 @Component
@@ -22,8 +23,8 @@ public class AuthorizationAspect {
 
     private static final String MESSAGE = "You do not have permission to call this operation. Please contact admin to get suitable permission.";
 
-    @Before("within(@org.springframework.web.bind.annotation.RestController *) && @annotation(authority)")
-    public void hasAuthorities(final JoinPoint joinPoint, final HasEndpointAuthority authority) {
+    @Before("within(@org.springframework.web.bind.annotation.RestController *) && @annotation(permissions)")
+    public void hasAuthorities(final JoinPoint joinPoint, final HasAnyPermissions permissions) {
         final SecurityContext securityContext = SecurityContextHolder.getContext();
         if (Objects.isNull(securityContext)) {
             log.error("The security context is null when checking endpoint access for user request");
@@ -36,7 +37,7 @@ public class AuthorizationAspect {
         }
         final String username = authentication.getName();
         final Collection<? extends GrantedAuthority> userAuthorities = authentication.getAuthorities();
-        if (!userAuthorities.stream().map(GrantedAuthority::getAuthority).toList().contains(authority.value().toString())) {
+        if (Stream.of(permissions.permissions()).noneMatch(permission -> userAuthorities.stream().anyMatch(userAuthority -> userAuthority.getAuthority().equals(permission.name())))) {
             log.error("User {} does not have the correct authorities required by endpoint", username);
             throw new UnauthorizedException(MESSAGE);
         }

@@ -1,7 +1,7 @@
 package com.crm.model.role;
 
 import com.crm.model.BaseEntity;
-import com.crm.security.enums.SecurityAuthority;
+import com.crm.security.enums.Permission;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -20,7 +20,7 @@ import java.util.Set;
 public class Role extends BaseEntity {
     @Column(name = "name", unique = true, nullable = false, length = 100)
     @Enumerated(EnumType.STRING)
-    private SecurityAuthority name;
+    private Permission name;
 
     @Column(name = "description")
     private String description;

@@ -1,8 +1,8 @@
 package com.crm.controller;
 
 import com.crm.dto.RoleDto;
-import com.crm.security.anotations.HasEndpointAuthority;
-import com.crm.security.enums.SecurityAuthority;
+import com.crm.security.anotations.HasAnyPermissions;
+import com.crm.security.enums.Permission;
 import com.crm.service.RoleService;
 import com.crm.util.ErrorHelper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -21,9 +21,7 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("api/v1/roles")
-@Tag(
-        name = "REST APIs for Role Resource"
-)
+@Tag(name = "REST APIs for Role Resource")
 public class RoleController {
 
     private final RoleService roleService;
@@ -31,7 +29,7 @@ public class RoleController {
     @Operation(summary = "Find all roles", description = "Find all roles in the database")
     @ApiResponse(responseCode = "200", description = "Http Status 200 OK")
     @SecurityRequirement(name = "Bear Authentication")
-    @HasEndpointAuthority(SecurityAuthority.GET_ALL_ROLES)
+    @HasAnyPermissions(permissions = {Permission.ROLE_VIEW, Permission.ROLE_EDIT})
     @GetMapping
     public Object findAll() {
         List<RoleDto> roles = roleService.findAll();
@@ -41,6 +39,7 @@ public class RoleController {
     @Operation(summary = "Find role by id", description = "Find role by id in the database")
     @ApiResponse(responseCode = "200", description = "Http Status 200 OK")
     @SecurityRequirement(name = "Bear Authentication")
+    @HasAnyPermissions(permissions = {Permission.ROLE_VIEW, Permission.ROLE_EDIT})
     @GetMapping("/{role-id}")
     public Object findRoleById(@PathVariable("role-id") Long id) {
         RoleDto role = roleService.findById(id);
@@ -50,6 +49,7 @@ public class RoleController {
     @Operation(summary = "Crate role", description = "Create a new role and save to database")
     @ApiResponse(responseCode = "201", description = "Http Status 201 OK")
     @SecurityRequirement(name = "Bear Authentication")
+    @HasAnyPermissions(permissions = Permission.ROLE_EDIT)
     @PostMapping
     public Object createNewRole(@RequestBody @Valid RoleDto roleDto,
                                 BindingResult bindingResult) {
@@ -60,9 +60,10 @@ public class RoleController {
         return new ResponseEntity<>(savedRole, HttpStatus.CREATED);
     }
 
-    @Operation(summary = "Update role by id", description = "Update role by id in the database")
+    @Operation(summary = "Update role by id", description = "Update role by id and save to the database")
     @ApiResponse(responseCode = "200", description = "Http Status 200 OK")
     @SecurityRequirement(name = "Bear Authentication")
+    @HasAnyPermissions(permissions = Permission.ROLE_EDIT)
     @PutMapping("/{role-id}")
     public Object updateRole(@PathVariable("role-id") Long id, @RequestBody @Valid RoleDto roleDto,
                              BindingResult bindingResult) {
