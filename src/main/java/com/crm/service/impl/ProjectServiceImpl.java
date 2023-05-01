@@ -55,13 +55,13 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public ProjectResponsePagingDto getAllProjects(int pageNo, int pageSize, String sortBy, String sortDir) {
+    public ProjectResponsePagingDto getAllProjects(String searchKey, int pageNo, int pageSize, String sortBy, String sortDir) {
         Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name()) ? Sort.by(sortBy).ascending()
                 : Sort.by(sortBy).descending();
 
         Pageable pageable = PageRequest.of(pageNo, pageSize, sort);
 
-        Page<Project> projects = projectRepository.findAll(pageable);
+        Page<Project> projects = projectRepository.searchProjects(searchKey, pageable);
         List<Project> listOfProjects = projects.getContent();
         List<ProjectWithMembersDto> content = listOfProjects.stream().map(this::mapToProjectWithMembersDto).toList();
         ProjectResponsePagingDto dto = new ProjectResponsePagingDto();
