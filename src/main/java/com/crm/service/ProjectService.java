@@ -15,4 +15,6 @@ public interface ProjectService {
     ProjectWithMembersDto removeMembers(Long projectId, List<Long> userIds);
 
     ProjectResponsePagingDto getAllProjects(int pageNo, int pageSize, String sortBy, String sortDir);
+
+    ProjectWithMembersDto findById(Long id);
 }

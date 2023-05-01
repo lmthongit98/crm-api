@@ -41,6 +41,14 @@ public class ProjectController {
     }
 
     @SecurityRequirement(name = "Bear Authentication")
+    @HasAnyPermissions(permissions = Permission.PROJECT_VIEW)
+    @GetMapping("/{id}")
+    public Object findProjectById(@PathVariable("id") @NotNull Long id){
+        ProjectWithMembersDto dto = projectService.findById(id);
+        return new ResponseEntity<>(dto, HttpStatus.OK);
+    }
+
+    @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.PROJECT_EDIT)
     @PostMapping
     public Object createProject(@RequestBody @Valid ProjectRequestDto projectRequestDto,
