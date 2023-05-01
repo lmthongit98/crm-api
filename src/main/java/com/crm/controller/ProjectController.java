@@ -42,7 +42,16 @@ public class ProjectController {
     @PostMapping("/add-members/{project-id}")
     public Object addMembers(@PathVariable("project-id") @NotNull Long projectId, @RequestBody List<Long> userIds) {
         ProjectWithMembersDto dto = projectService.addMembers(projectId, userIds);
-        return new ResponseEntity<>(dto, HttpStatus.CREATED);
+        return new ResponseEntity<>(dto, HttpStatus.OK);
     }
+
+    @SecurityRequirement(name = "Bear Authentication")
+    @HasAnyPermissions(permissions = Permission.PROJECT_EDIT)
+    @PostMapping("/remove-members/{project-id}")
+    public Object removeMembers(@PathVariable("project-id") @NotNull Long projectId, @RequestBody List<Long> userIds) {
+        ProjectWithMembersDto dto = projectService.removeMembers(projectId, userIds);
+        return new ResponseEntity<>(dto, HttpStatus.OK);
+    }
+
 
 }

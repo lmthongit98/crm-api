@@ -50,8 +50,8 @@ public class Project extends BaseEntity {
         members.forEach(member -> member.getProjects().add(this));
     }
 
-    public void removeMember(User member) {
-        this.members.remove(member);
-        member.getProjects().remove(this);
+    public void removeMember(Set<User> members) {
+        this.members.removeAll(members);
+        members.forEach(member -> member.getProjects().remove(this));
     }
 }

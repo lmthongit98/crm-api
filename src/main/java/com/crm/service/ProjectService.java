@@ -10,4 +10,6 @@ public interface ProjectService {
     ProjectResponseDto create(ProjectRequestDto projectRequestDto);
 
     ProjectWithMembersDto addMembers(Long projectId, List<Long> userIds);
+
+    ProjectWithMembersDto removeMembers(Long projectId, List<Long> userIds);
 }

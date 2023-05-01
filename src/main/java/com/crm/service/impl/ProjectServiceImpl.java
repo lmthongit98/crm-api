@@ -40,6 +40,15 @@ public class ProjectServiceImpl implements ProjectService {
         return modelMapper.map(savedProject, ProjectWithMembersDto.class);
     }
 
+    @Override
+    public ProjectWithMembersDto removeMembers(Long projectId, List<Long> userIds) {
+        Project project = findProjectById(projectId);
+        List<User> users = userRepository.findAllById(userIds);
+        project.removeMember(new HashSet<>(users));
+        Project savedProject = projectRepository.save(project);
+        return modelMapper.map(savedProject, ProjectWithMembersDto.class);
+    }
+
     private Project findProjectById(Long id) {
         return projectRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Project not found for id: " + id));
     }
