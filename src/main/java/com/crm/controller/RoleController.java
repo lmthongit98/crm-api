@@ -21,7 +21,7 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("api/v1/roles")
-@Tag(name = "REST APIs for Role Resource")
+//@Tag(name = "REST APIs for Role Resource")
 public class RoleController {
 
     private final RoleService roleService;

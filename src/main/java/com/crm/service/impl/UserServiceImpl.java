@@ -1,8 +1,7 @@
 package com.crm.service.impl;
 
-import com.crm.dto.RoleDto;
-import com.crm.dto.UserDto;
-import com.crm.dto.UserWithRolesDto;
+import com.crm.dto.*;
+import com.crm.exception.BadRequestException;
 import com.crm.exception.ResourceNotFoundException;
 import com.crm.model.user.User;
 import com.crm.repository.UserRepository;
@@ -44,7 +43,7 @@ public class UserServiceImpl implements UserService {
                 .displayName(user.getDisplayName())
                 .email(user.getEmail())
                 .build();
-        if(!Objects.isNull(user.getGroup()) && !CollectionUtils.isEmpty(user.getGroup().getRoles())) {
+        if (!Objects.isNull(user.getGroup()) && !CollectionUtils.isEmpty(user.getGroup().getRoles())) {
             List<RoleDto> roleDtos = user.getGroup().getRoles().stream().map(role -> modelMapper.map(role, RoleDto.class)).toList();
             userWithRolesDto.setRoles(roleDtos);
         }
@@ -64,6 +63,43 @@ public class UserServiceImpl implements UserService {
             userDto.setPassword(null);
             return userDto;
         }).collect(Collectors.toList());
+    }
+
+    @Override
+    public UserDto update(Long id, UserToUpdateDto userToUpdateDto) {
+        User user = getUserEntityById(id);
+        user.setDisplayName(userToUpdateDto.getUsername());
+        if (!user.getUsername().equals(userToUpdateDto.getUsername())) {
+            if (userRepository.findByUsername(userToUpdateDto.getUsername()).isPresent()) {
+                throw new BadRequestException("Username is already used.");
+            }
+            user.setUsername(userToUpdateDto.getUsername());
+        }
+        if (!user.getEmail().equals(userToUpdateDto.getEmail())) {
+            if (userRepository.findByEmail(userToUpdateDto.getEmail()).isPresent()) {
+                throw new BadRequestException("Email is already used.");
+            }
+            user.setEmail(userToUpdateDto.getEmail());
+        }
+        User updatedUser = userRepository.save(user);
+        return mapToDto(updatedUser);
+    }
+
+    @Override
+    public void changePassword(Long userId, PasswordDto passwordDto) {
+        User user = getUserEntityById(userId);
+        if (!passwordEncoder.matches(passwordDto.getOldPassword(), user.getPassword())) {
+            throw new BadRequestException("Old password is not correct!");
+        }
+        if (!passwordDto.getNewPassword().equals(passwordDto.getConfirmPassword())) {
+            throw new BadRequestException("Confirm password is not correct!");
+        }
+        user.setPassword(passwordEncoder.encode(passwordDto.getNewPassword()));
+        userRepository.save(user);
+    }
+
+    private User getUserEntityById(Long id) {
+        return userRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("User not found for id: " + id));
     }
 
     private UserDto mapToDto(User user) {

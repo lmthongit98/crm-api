@@ -1,6 +1,8 @@
 package com.crm.controller;
 
+import com.crm.dto.PasswordDto;
 import com.crm.dto.UserDto;
+import com.crm.dto.UserToUpdateDto;
 import com.crm.dto.UserWithRolesDto;
 import com.crm.security.anotations.HasAnyPermissions;
 import com.crm.security.enums.Permission;
@@ -32,6 +34,28 @@ public class UserController {
         }
         UserDto savedUser = userService.save(userDto);
         return new ResponseEntity<>(savedUser, HttpStatus.CREATED);
+    }
+
+    @SecurityRequirement(name = "Bear Authentication")
+    @HasAnyPermissions(permissions = Permission.USER_EDIT)
+    @PutMapping("/{id}")
+    public Object updateUser(@PathVariable("id") Long id, @RequestBody @Valid UserToUpdateDto userToUpdateDto, BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            return new ResponseEntity<>(ErrorHelper.getAllError(bindingResult), HttpStatus.BAD_REQUEST);
+        }
+        UserDto updatedUser = userService.update(id, userToUpdateDto);
+        return new ResponseEntity<>(updatedUser, HttpStatus.OK);
+    }
+
+    @SecurityRequirement(name = "Bear Authentication")
+    @HasAnyPermissions(permissions = Permission.USER_EDIT)
+    @PutMapping("/change-password/{user-id}")
+    public Object changePassword(@PathVariable("user-id") Long userId, @RequestBody @Valid PasswordDto passwordDto, BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            return new ResponseEntity<>(ErrorHelper.getAllError(bindingResult), HttpStatus.BAD_REQUEST);
+        }
+        userService.changePassword(userId, passwordDto);
+        return new ResponseEntity<>("Changed password successfully!", HttpStatus.OK);
     }
 
     @SecurityRequirement(name = "Bear Authentication")
