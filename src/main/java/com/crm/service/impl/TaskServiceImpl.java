@@ -13,8 +13,11 @@ import com.crm.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 
+import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -65,6 +68,12 @@ public class TaskServiceImpl implements TaskService {
     public TaskResponseDto findById(Long id) {
         Task task = findTaskById(id);
         return mapToDto(task);
+    }
+
+    @Override
+    public List<TaskResponseDto> filterTasksByAssignees( List<Long> assigneeIds) {
+        List<Task> tasks = CollectionUtils.isEmpty(assigneeIds) ? taskRepository.findAll() : taskRepository.findByAssignee_IdIn(assigneeIds);
+        return tasks.stream().map(this::mapToDto).collect(Collectors.toList());
     }
 
     private Task findTaskById(Long id) {
