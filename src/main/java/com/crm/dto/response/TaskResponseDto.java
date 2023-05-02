@@ -15,7 +15,6 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @SuperBuilder
 public class TaskResponseDto extends AbstractDto {
-    private Long projectId;
     private String name;
     private String description;
     private TaskType type;

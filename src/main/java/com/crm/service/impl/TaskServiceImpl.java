@@ -61,6 +61,12 @@ public class TaskServiceImpl implements TaskService {
         taskRepository.delete(task);
     }
 
+    @Override
+    public TaskResponseDto findById(Long id) {
+        Task task = findTaskById(id);
+        return mapToDto(task);
+    }
+
     private Task findTaskById(Long id) {
         return taskRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Task not found for id: " + id));
     }

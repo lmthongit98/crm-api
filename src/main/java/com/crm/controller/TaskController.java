@@ -52,4 +52,12 @@ public class TaskController {
         taskService.deleteTask(id);
     }
 
+    @SecurityRequirement(name = "Bear Authentication")
+    @HasAnyPermissions(permissions = Permission.TASK_VIEW)
+    @GetMapping("/{id}")
+    public Object findById(@PathVariable("id") Long id) {
+        TaskResponseDto taskResponseDto = taskService.findById(id);
+        return new ResponseEntity<>(taskResponseDto, HttpStatus.CREATED);
+    }
+
 }
