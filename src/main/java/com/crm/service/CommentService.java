@@ -5,4 +5,8 @@ import com.crm.dto.response.CommentResponseDto;
 
 public interface CommentService {
     CommentResponseDto addComment(CommentRequestDto commentRequestDto);
+
+    void deleteComment(Long id);
+
+    CommentResponseDto editComment(Long id, String body);
 }

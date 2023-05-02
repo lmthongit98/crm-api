@@ -8,14 +8,13 @@ import com.crm.security.enums.Permission;
 import com.crm.service.CommentService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
@@ -33,6 +32,25 @@ public class CommentController {
             return new ResponseEntity<>(ErrorHelper.getAllError(bindingResult), HttpStatus.BAD_REQUEST);
         }
         CommentResponseDto commentResponseDto = commentService.addComment(commentRequestDto);
+        return new ResponseEntity<>(commentResponseDto, HttpStatus.CREATED);
+    }
+
+    @SecurityRequirement(name = "Bear Authentication")
+    @HasAnyPermissions(permissions = Permission.TASK_EDIT)
+    @DeleteMapping("/{id}")
+    public void deleteComment(@PathVariable("id") @NotNull Long id) {
+        commentService.deleteComment(id);
+    }
+
+    @SecurityRequirement(name = "Bear Authentication")
+    @HasAnyPermissions(permissions = Permission.TASK_EDIT)
+    @PutMapping("/{id}")
+    public Object editComment(@PathVariable("id") @NotNull Long id, @RequestBody @NotBlank String body,
+                             BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            return new ResponseEntity<>(ErrorHelper.getAllError(bindingResult), HttpStatus.BAD_REQUEST);
+        }
+        CommentResponseDto commentResponseDto = commentService.editComment(id, body);
         return new ResponseEntity<>(commentResponseDto, HttpStatus.CREATED);
     }
 

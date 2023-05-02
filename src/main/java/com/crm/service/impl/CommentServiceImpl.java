@@ -2,7 +2,7 @@ package com.crm.service.impl;
 
 import com.crm.dto.request.CommentRequestDto;
 import com.crm.dto.response.CommentResponseDto;
-import com.crm.dto.response.UserResponseDto;
+import com.crm.exception.ResourceNotFoundException;
 import com.crm.model.Comment;
 import com.crm.model.Task;
 import com.crm.model.User;
@@ -33,7 +33,29 @@ public class CommentServiceImpl implements CommentService {
                 .user(user)
                 .build();
         Comment savedComment = commentRepository.save(comment);
+        return mapToDto(savedComment);
+    }
+
+    @Override
+    public void deleteComment(Long id) {
+        Comment comment = findCommentById(id);
+        commentRepository.delete(comment);
+    }
+
+    @Override
+    public CommentResponseDto editComment(Long id, String body) {
+        Comment comment = findCommentById(id);
+        comment.setBody(body);
+        Comment savedComment = commentRepository.save(comment);
+        return mapToDto(savedComment);
+    }
+
+    private CommentResponseDto mapToDto(Comment savedComment) {
         return modelMapper.map(savedComment, CommentResponseDto.class);
+    }
+
+    private Comment findCommentById(Long id) {
+        return commentRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Comment not found for id: " + id));
     }
 
 }
