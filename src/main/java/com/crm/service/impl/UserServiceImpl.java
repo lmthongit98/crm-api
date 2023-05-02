@@ -63,7 +63,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserResponseDto update(Long id, UserToUpdateDto userToUpdateDto) {
-        User user = getUserEntityById(id);
+        User user = findUserById(id);
         user.setDisplayName(userToUpdateDto.getUsername());
         if (!user.getUsername().equals(userToUpdateDto.getUsername())) {
             if (userRepository.findByUsername(userToUpdateDto.getUsername()).isPresent()) {
@@ -83,7 +83,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void changePassword(Long userId, PasswordDto passwordDto) {
-        User user = getUserEntityById(userId);
+        User user = findUserById(userId);
         if (!passwordEncoder.matches(passwordDto.getOldPassword(), user.getPassword())) {
             throw new BadRequestException("Old password is not correct!");
         }
@@ -94,7 +94,8 @@ public class UserServiceImpl implements UserService {
         userRepository.save(user);
     }
 
-    private User getUserEntityById(Long id) {
+    @Override
+    public User findUserById(Long id) {
         return userRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("User not found for id: " + id));
     }
 

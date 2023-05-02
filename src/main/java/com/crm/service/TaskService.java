@@ -7,4 +7,6 @@ public interface TaskService {
     TaskResponseDto createTask(TaskRequestDto taskRequestDto);
 
     TaskResponseDto updateTask(Long id, TaskRequestDto taskRequestDto);
+
+    void deleteTask(Long id);
 }

@@ -45,4 +45,11 @@ public class TaskController {
         return new ResponseEntity<>(taskResponseDto, HttpStatus.CREATED);
     }
 
+    @SecurityRequirement(name = "Bear Authentication")
+    @HasAnyPermissions(permissions = Permission.TASK_DELETION)
+    @DeleteMapping("/{id}")
+    public void deleteTask(@PathVariable("id") Long id) {
+        taskService.deleteTask(id);
+    }
+
 }

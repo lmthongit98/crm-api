@@ -15,6 +15,7 @@ public class TaskRequestDto {
     private Long projectId;
     @NotBlank(message = "Task name must not be null.")
     private String name;
+    private Long userId;
     private String description;
     private TaskType type;
     private Priority priority;

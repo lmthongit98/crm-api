@@ -21,4 +21,6 @@ public class TaskResponseDto extends AbstractDto {
     private TaskType type;
     private Priority priority;
     private TaskStatus status;
+    private String reporter;
+    private UserResponseDto assignee;
 }
