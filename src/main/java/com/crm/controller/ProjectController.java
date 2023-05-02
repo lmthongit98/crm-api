@@ -5,7 +5,7 @@ import com.crm.common.util.ErrorHelper;
 import com.crm.dto.request.ProjectRequestDto;
 import com.crm.dto.response.ProjectResponseDto;
 import com.crm.dto.response.ProjectResponsePagingDto;
-import com.crm.dto.response.ProjectWithMembersDto;
+import com.crm.dto.response.ProjectDetailDto;
 import com.crm.security.anotations.HasAnyPermissions;
 import com.crm.security.enums.Permission;
 import com.crm.service.ProjectService;
@@ -45,7 +45,7 @@ public class ProjectController {
     @HasAnyPermissions(permissions = Permission.PROJECT_VIEW)
     @GetMapping("/{id}")
     public Object findProjectById(@PathVariable("id") @NotNull Long id){
-        ProjectWithMembersDto dto = projectService.findById(id);
+        ProjectDetailDto dto = projectService.findById(id);
         return new ResponseEntity<>(dto, HttpStatus.OK);
     }
 
@@ -64,7 +64,7 @@ public class ProjectController {
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.PROJECT_DELETION)
     @DeleteMapping("/{id}")
-    public void createProject(@PathVariable("id") Long id) {
+    public void deleteProject(@PathVariable("id") Long id) {
         projectService.deleteById(id);
     }
 
@@ -81,7 +81,7 @@ public class ProjectController {
     @HasAnyPermissions(permissions = Permission.PROJECT_EDIT)
     @PostMapping("/add-members/{project-id}")
     public Object addMembers(@PathVariable("project-id") @NotNull Long projectId, @RequestBody List<Long> userIds) {
-        ProjectWithMembersDto dto = projectService.addMembers(projectId, userIds);
+        ProjectDetailDto dto = projectService.addMembers(projectId, userIds);
         return new ResponseEntity<>(dto, HttpStatus.OK);
     }
 
@@ -89,7 +89,7 @@ public class ProjectController {
     @HasAnyPermissions(permissions = Permission.PROJECT_EDIT)
     @PostMapping("/remove-members/{project-id}")
     public Object removeMembers(@PathVariable("project-id") @NotNull Long projectId, @RequestBody List<Long> userIds) {
-        ProjectWithMembersDto dto = projectService.removeMembers(projectId, userIds);
+        ProjectDetailDto dto = projectService.removeMembers(projectId, userIds);
         return new ResponseEntity<>(dto, HttpStatus.OK);
     }
 

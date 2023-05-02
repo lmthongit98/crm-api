@@ -1,22 +1,24 @@
 package com.crm.dto.response;
 
-import com.crm.common.enums.ProjectType;
+import com.crm.common.enums.Priority;
+import com.crm.common.enums.TaskStatus;
+import com.crm.common.enums.TaskType;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
-import java.util.List;
-
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @SuperBuilder
-public class ProjectWithMembersDto extends AbstractDto {
+public class TaskResponseDto extends AbstractDto {
+    private Long projectId;
     private String name;
     private String description;
-    private ProjectType type;
-    private List<UserResponseDto> members;
+    private TaskType type;
+    private Priority priority;
+    private TaskStatus status;
 }

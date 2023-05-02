@@ -14,7 +14,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ProjectResponsePagingDto {
-    private List<ProjectWithMembersDto> content;
+    private List<ProjectDetailDto> content;
     private int pageNo;
     private int pageSize;
     private long totalElements;

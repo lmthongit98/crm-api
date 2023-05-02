@@ -3,7 +3,7 @@ package com.crm.service.impl;
 import com.crm.dto.request.ProjectRequestDto;
 import com.crm.dto.response.ProjectResponseDto;
 import com.crm.dto.response.ProjectResponsePagingDto;
-import com.crm.dto.response.ProjectWithMembersDto;
+import com.crm.dto.response.ProjectDetailDto;
 import com.crm.exception.ResourceNotFoundException;
 import com.crm.model.Project;
 import com.crm.model.User;
@@ -37,7 +37,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public ProjectWithMembersDto addMembers(Long projectId, List<Long> userIds) {
+    public ProjectDetailDto addMembers(Long projectId, List<Long> userIds) {
         Project project = findProjectById(projectId);
         List<User> users = userRepository.findAllById(userIds);
         project.addMember(new HashSet<>(users));
@@ -46,7 +46,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public ProjectWithMembersDto removeMembers(Long projectId, List<Long> userIds) {
+    public ProjectDetailDto removeMembers(Long projectId, List<Long> userIds) {
         Project project = findProjectById(projectId);
         List<User> users = userRepository.findAllById(userIds);
         project.removeMember(new HashSet<>(users));
@@ -63,7 +63,7 @@ public class ProjectServiceImpl implements ProjectService {
 
         Page<Project> projects = projectRepository.searchProjects(searchKey, pageable);
         List<Project> listOfProjects = projects.getContent();
-        List<ProjectWithMembersDto> content = listOfProjects.stream().map(this::mapToProjectWithMembersDto).toList();
+        List<ProjectDetailDto> content = listOfProjects.stream().map(this::mapToProjectWithMembersDto).toList();
         ProjectResponsePagingDto dto = new ProjectResponsePagingDto();
         dto.setContent(content);
         dto.setPageNo(projects.getNumber());
@@ -75,7 +75,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public ProjectWithMembersDto findById(Long id) {
+    public ProjectDetailDto findById(Long id) {
         Project project = findProjectById(id);
         return mapToProjectWithMembersDto(project);
     }
@@ -96,12 +96,13 @@ public class ProjectServiceImpl implements ProjectService {
         return mapToDto(savedProject);
     }
 
-    private Project findProjectById(Long id) {
+    @Override
+    public Project findProjectById(Long id) {
         return projectRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Project not found for id: " + id));
     }
 
-    private ProjectWithMembersDto mapToProjectWithMembersDto(Project savedProject) {
-        return modelMapper.map(savedProject, ProjectWithMembersDto.class);
+    private ProjectDetailDto mapToProjectWithMembersDto(Project savedProject) {
+        return modelMapper.map(savedProject, ProjectDetailDto.class);
     }
 
     private Project mapToEntity(ProjectRequestDto projectRequestDto) {
