@@ -9,6 +9,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
+import java.util.Set;
+
 @Getter
 @Setter
 @AllArgsConstructor
@@ -22,4 +24,5 @@ public class TaskResponseDto extends AbstractDto {
     private TaskStatus status;
     private String reporter;
     private UserResponseDto assignee;
+    private Set<CommentResponseDto> comments;
 }

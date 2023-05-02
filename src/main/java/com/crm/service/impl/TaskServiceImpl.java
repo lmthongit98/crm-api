@@ -76,7 +76,8 @@ public class TaskServiceImpl implements TaskService {
         return tasks.stream().map(this::mapToDto).collect(Collectors.toList());
     }
 
-    private Task findTaskById(Long id) {
+    @Override
+    public Task findTaskById(Long id) {
         return taskRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Task not found for id: " + id));
     }
 
