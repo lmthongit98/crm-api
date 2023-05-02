@@ -19,7 +19,7 @@ import org.springframework.data.annotation.CreatedBy;
 @Entity
 @Table(name = "task")
 public class Task extends BaseEntity {
-    @Column(name = "name", unique = true, nullable = false, length = 100)
+    @Column(name = "name", nullable = false, length = 100)
     private String name;
 
     @Column(name = "description")

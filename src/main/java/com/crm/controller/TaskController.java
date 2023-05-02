@@ -12,10 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
@@ -35,4 +32,17 @@ public class TaskController {
         TaskResponseDto taskResponseDto = taskService.createTask(taskRequestDto);
         return new ResponseEntity<>(taskResponseDto, HttpStatus.CREATED);
     }
+
+    @SecurityRequirement(name = "Bear Authentication")
+    @HasAnyPermissions(permissions = Permission.TASK_EDIT)
+    @PutMapping("/{id}")
+    public Object updateTask(@PathVariable("id") Long id, @RequestBody @Valid TaskRequestDto taskRequestDto,
+                             BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            return new ResponseEntity<>(ErrorHelper.getAllError(bindingResult), HttpStatus.BAD_REQUEST);
+        }
+        TaskResponseDto taskResponseDto = taskService.updateTask(id, taskRequestDto);
+        return new ResponseEntity<>(taskResponseDto, HttpStatus.CREATED);
+    }
+
 }
