@@ -11,6 +11,8 @@ import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 import org.springframework.data.annotation.CreatedBy;
 
+import java.util.Set;
+
 @Setter
 @Getter
 @NoArgsConstructor
@@ -49,4 +51,6 @@ public class Task extends BaseEntity {
     @JoinColumn(name = "user_id")
     private User assignee;
 
+    @OneToMany(mappedBy = "task")
+    private Set<Comment> comments;
 }

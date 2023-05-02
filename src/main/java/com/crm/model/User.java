@@ -64,4 +64,7 @@ public class User extends BaseEntity {
     @ManyToMany(mappedBy = "members")
     private Set<Project> projects = new HashSet<>();
 
+    @OneToMany(mappedBy = "user")
+    private Set<Comment> comments = new HashSet<>();
+
 }
