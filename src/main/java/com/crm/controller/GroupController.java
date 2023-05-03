@@ -99,5 +99,12 @@ public class GroupController {
         groupService.removeUser(groupId, username);
     }
 
+    @SecurityRequirement(name = "Bear Authentication")
+    @DeleteMapping("/{id}")
+    @HasAnyPermissions(permissions = Permission.GROUP_DELETION)
+    public void deleteGroup(@PathVariable("id") @NotNull Long id) {
+        groupService.deleteGroup(id);
+    }
+
 
 }

@@ -21,4 +21,6 @@ public interface GroupService {
     void addUser(Long groupId, String username);
 
     void removeUser(Long groupId, String username);
+
+    void deleteGroup(Long id);
 }

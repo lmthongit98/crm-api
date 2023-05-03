@@ -34,13 +34,13 @@ public class GroupServiceImpl implements GroupService {
 
     @Override
     public GroupWithRolesDto findById(Long groupId) {
-        Group group = getGroupEntityById(groupId);
+        Group group = findGroupById(groupId);
         return mapToDtoWithRoles(group);
     }
 
     @Override
     public GroupWithRolesDto addRole(Long groupId, Long roleId) {
-        Group group = getGroupEntityById(groupId);
+        Group group = findGroupById(groupId);
         Role role = roleService.findRoleById(roleId);
         group.addRole(role);
         Group updatedGroup = groupRepository.save(group);
@@ -49,7 +49,7 @@ public class GroupServiceImpl implements GroupService {
 
     @Override
     public GroupWithRolesDto removeRole(Long groupId, Long roleId) {
-        Group group = getGroupEntityById(groupId);
+        Group group = findGroupById(groupId);
         Role role = roleService.findRoleById(roleId);
         group.removeRole(role);
         Group updatedGroup = groupRepository.save(group);
@@ -58,7 +58,7 @@ public class GroupServiceImpl implements GroupService {
 
     @Override
     public GroupDto update(Long groupId, GroupDto groupDto) {
-        Group group = getGroupEntityById(groupId);
+        Group group = findGroupById(groupId);
         group.setName(group.getName());
         group.setDescription(groupDto.getDescription());
         Group updatedGroup = groupRepository.save(group);
@@ -68,7 +68,7 @@ public class GroupServiceImpl implements GroupService {
     @Override
     public void addUser(Long groupId, String username) {
         User user = userService.findByUsername(username);
-        Group group = getGroupEntityById(groupId);
+        Group group = findGroupById(groupId);
         group.addUser(user);
         groupRepository.save(group);
     }
@@ -76,9 +76,19 @@ public class GroupServiceImpl implements GroupService {
     @Override
     public void removeUser(Long groupId, String username) {
         User user = userService.findByUsername(username);
-        Group group = getGroupEntityById(groupId);
+        Group group = findGroupById(groupId);
         group.removeUser(user);
         groupRepository.save(group);
+    }
+
+    @Override
+    public void deleteGroup(Long id) {
+        // no need to remove group from roles because Group is relationship owner of Group-Role. Delete group, hibernate also delete associations
+        Group group = findGroupById(id);
+        for (User user : group.getUsers()) {
+            group.removeUser(user);
+        }
+        groupRepository.delete(group);
     }
 
     @Override
@@ -88,7 +98,7 @@ public class GroupServiceImpl implements GroupService {
         return mapToDto(savedGroup);
     }
 
-    private Group getGroupEntityById(Long groupId) {
+    private Group findGroupById(Long groupId) {
         return groupRepository.findById(groupId).orElseThrow(() -> new ResourceNotFoundException("Group not found for id: " + groupId));
     }
 

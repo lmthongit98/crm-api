@@ -51,6 +51,6 @@ public class Task extends BaseEntity {
     @JoinColumn(name = "user_id")
     private User assignee;
 
-    @OneToMany(mappedBy = "task")
+    @OneToMany(mappedBy = "task", orphanRemoval = true)
     private Set<Comment> comments;
 }
