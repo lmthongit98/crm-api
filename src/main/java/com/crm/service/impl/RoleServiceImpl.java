@@ -2,6 +2,7 @@ package com.crm.service.impl;
 
 import com.crm.dto.RoleDto;
 import com.crm.exception.ResourceNotFoundException;
+import com.crm.model.Group;
 import com.crm.model.Role;
 import com.crm.repository.RoleRepository;
 import com.crm.service.RoleService;
@@ -54,6 +55,9 @@ public class RoleServiceImpl implements RoleService {
     @Override
     public void deleteById(Long id) {
         Role role = findRoleById(id);
+        for (Group group : role.getGroups()) {
+            group.getRoles().remove(role);
+        }
         roleRepository.delete(role);
     }
 

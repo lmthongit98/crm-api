@@ -26,7 +26,6 @@ public class RoleController {
     private final RoleService roleService;
 
     @Operation(summary = "Find all roles")
-    @ApiResponse(responseCode = "200", description = "Http Status 200 OK")
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = {Permission.ROLE_VIEW, Permission.ROLE_EDIT})
     @GetMapping
@@ -36,7 +35,6 @@ public class RoleController {
     }
 
     @Operation(summary = "Find role by id")
-    @ApiResponse(responseCode = "200", description = "Http Status 200 OK")
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = {Permission.ROLE_VIEW, Permission.ROLE_EDIT})
     @GetMapping("/{role-id}")
@@ -46,7 +44,6 @@ public class RoleController {
     }
 
     @Operation(summary = "Crate role")
-    @ApiResponse(responseCode = "201", description = "Http Status 201 OK")
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.ROLE_EDIT)
     @PostMapping
@@ -60,7 +57,6 @@ public class RoleController {
     }
 
     @Operation(summary = "Update role by id")
-    @ApiResponse(responseCode = "200", description = "Http Status 200 OK")
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.ROLE_EDIT)
     @PutMapping("/{role-id}")
@@ -74,16 +70,11 @@ public class RoleController {
     }
 
     @Operation(summary = "Delete role by id")
-    @ApiResponse(responseCode = "200", description = "Http Status 200 OK")
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.ROLE_DELETION)
     @DeleteMapping("/{id}")
-    public Object deleteRoleById(@PathVariable("id") @NotNull Long id, BindingResult bindingResult) {
-        if (bindingResult.hasErrors()) {
-            return new ResponseEntity<>(ErrorHelper.getAllError(bindingResult), HttpStatus.BAD_REQUEST);
-        }
+    public void deleteRoleById(@PathVariable("id") @NotNull Long id) {
         roleService.deleteById(id);
-        return new ResponseEntity<>("Deleted role successfully!", HttpStatus.OK);
     }
 
 }
