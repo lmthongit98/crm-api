@@ -3,6 +3,7 @@ package com.crm.controller;
 import com.crm.dto.LoginDto;
 import com.crm.service.AuthService;
 import com.crm.common.util.ErrorHelper;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +23,7 @@ public class AuthController {
 
     private final AuthService authService;
 
+    @Operation(summary = "Login to get token")
     @PostMapping("/login")
     public Object login(@RequestBody @Valid LoginDto loginDto, BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {

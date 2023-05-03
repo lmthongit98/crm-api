@@ -11,6 +11,7 @@ import com.crm.security.anotations.HasAnyPermissions;
 import com.crm.security.enums.Permission;
 import com.crm.service.UserService;
 import com.crm.common.util.ErrorHelper;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
@@ -30,6 +31,8 @@ public class UserController {
 
     private final UserService userService;
 
+
+    @Operation(summary = "Create new user")
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.USER_EDIT)
     @PostMapping
@@ -41,6 +44,8 @@ public class UserController {
         return new ResponseEntity<>(savedUser, HttpStatus.CREATED);
     }
 
+
+    @Operation(summary = "Update user by id")
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.USER_EDIT)
     @PutMapping("/{id}")
@@ -52,6 +57,8 @@ public class UserController {
         return new ResponseEntity<>(updatedUser, HttpStatus.OK);
     }
 
+
+    @Operation(summary = "Change password")
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.USER_EDIT)
     @PutMapping("/change-password/{user-id}")
@@ -63,6 +70,7 @@ public class UserController {
         return new ResponseEntity<>("Changed password successfully!", HttpStatus.OK);
     }
 
+    @Operation(summary = "Search users by username or display name")
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.USER_VIEW)
     @GetMapping
@@ -75,14 +83,16 @@ public class UserController {
         return new ResponseEntity<>(responseDto, HttpStatus.OK);
     }
 
+    @Operation(summary = "Find user's roles by user id")
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.USER_VIEW)
     @GetMapping ("/{user-id}/roles")
-    public Object findRoleByUsername(@PathVariable("user-id") @NotNull Long userId) {
+    public Object findRoleByUserId(@PathVariable("user-id") @NotNull Long userId) {
         UserWithRolesDto userWithRolesDto = userService.findUserWithRolesById(userId);
         return new ResponseEntity<>(userWithRolesDto, HttpStatus.OK);
     }
 
+    @Operation(summary = "Delete users by ids")
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.USER_DELETION)
     @DeleteMapping

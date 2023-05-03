@@ -9,6 +9,7 @@ import com.crm.dto.response.ProjectDetailResponseDto;
 import com.crm.security.anotations.HasAnyPermissions;
 import com.crm.security.enums.Permission;
 import com.crm.service.ProjectService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -27,6 +28,7 @@ public class ProjectController {
 
     private final ProjectService projectService;
 
+    @Operation(summary = "Search projects by name or description")
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.PROJECT_VIEW)
     @GetMapping
@@ -41,6 +43,7 @@ public class ProjectController {
         return new ResponseEntity<>(responseDto, HttpStatus.OK);
     }
 
+    @Operation(summary = "Find project by id")
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.PROJECT_VIEW)
     @GetMapping("/{id}")
@@ -49,6 +52,7 @@ public class ProjectController {
         return new ResponseEntity<>(dto, HttpStatus.OK);
     }
 
+    @Operation(summary = "Create a project")
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.PROJECT_EDIT)
     @PostMapping
@@ -61,6 +65,7 @@ public class ProjectController {
         return new ResponseEntity<>(project, HttpStatus.CREATED);
     }
 
+    @Operation(summary = "Delete a project by id")
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.PROJECT_DELETION)
     @DeleteMapping("/{id}")
@@ -68,6 +73,7 @@ public class ProjectController {
         projectService.deleteById(id);
     }
 
+    @Operation(summary = "Update a project by id")
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.PROJECT_EDIT)
     @PutMapping("/{id}")
@@ -77,6 +83,8 @@ public class ProjectController {
         return new ResponseEntity<>(dto, HttpStatus.OK);
     }
 
+
+    @Operation(summary = "Add members into project")
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.PROJECT_EDIT)
     @PostMapping("/add-members/{project-id}")
@@ -85,6 +93,7 @@ public class ProjectController {
         return new ResponseEntity<>(dto, HttpStatus.OK);
     }
 
+    @Operation(summary = "Remove members from project")
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.PROJECT_EDIT)
     @PostMapping("/remove-members/{project-id}")

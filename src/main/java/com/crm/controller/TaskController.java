@@ -6,6 +6,7 @@ import com.crm.dto.response.TaskResponseDto;
 import com.crm.security.anotations.HasAnyPermissions;
 import com.crm.security.enums.Permission;
 import com.crm.service.TaskService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ public class TaskController {
 
     private final TaskService taskService;
 
+    @Operation(summary = "Filter task by assignee ids. If ids is empty, return all tasks")
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.TASK_VIEW)
     @GetMapping
@@ -31,6 +33,7 @@ public class TaskController {
         return new ResponseEntity<>(tasks, HttpStatus.OK);
     }
 
+    @Operation(summary = "Create a task")
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.TASK_EDIT)
     @PostMapping
@@ -43,6 +46,7 @@ public class TaskController {
         return new ResponseEntity<>(taskResponseDto, HttpStatus.CREATED);
     }
 
+    @Operation(summary = "Update task by id")
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.TASK_EDIT)
     @PutMapping("/{id}")
@@ -55,6 +59,7 @@ public class TaskController {
         return new ResponseEntity<>(taskResponseDto, HttpStatus.CREATED);
     }
 
+    @Operation(summary = "Delete task by id")
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.TASK_DELETION)
     @DeleteMapping("/{id}")
@@ -62,6 +67,7 @@ public class TaskController {
         taskService.deleteTask(id);
     }
 
+    @Operation(summary = "Find task by id")
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.TASK_VIEW)
     @GetMapping("/{id}")

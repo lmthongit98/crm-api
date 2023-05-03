@@ -6,6 +6,7 @@ import com.crm.dto.response.CommentResponseDto;
 import com.crm.security.anotations.HasAnyPermissions;
 import com.crm.security.enums.Permission;
 import com.crm.service.CommentService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -23,6 +24,7 @@ public class CommentController {
 
     private final CommentService commentService;
 
+    @Operation(summary = "Add a comment")
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.TASK_VIEW)
     @PostMapping
@@ -35,6 +37,7 @@ public class CommentController {
         return new ResponseEntity<>(commentResponseDto, HttpStatus.CREATED);
     }
 
+    @Operation(summary = "Delete comment by id")
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.TASK_EDIT)
     @DeleteMapping("/{id}")
@@ -42,6 +45,7 @@ public class CommentController {
         commentService.deleteComment(id);
     }
 
+    @Operation(summary = "Edit comment by id")
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.TASK_EDIT)
     @PutMapping("/{id}")
