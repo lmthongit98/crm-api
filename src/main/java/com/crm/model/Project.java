@@ -38,11 +38,6 @@ public class Project extends BaseEntity {
             inverseJoinColumns = @JoinColumn(name = "user_id"))
     private Set<User> members = new HashSet<>();
 
-    public void addTask(Task task) {
-        this.tasks.add(task);
-        task.setProject(this);
-    }
-
     public void addMember(Set<User> members) {
         this.members.addAll(members);
         members.forEach(member -> member.getProjects().add(this));
