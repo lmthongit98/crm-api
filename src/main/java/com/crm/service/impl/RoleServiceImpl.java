@@ -34,12 +34,12 @@ public class RoleServiceImpl implements RoleService {
 
     @Override
     public RoleDto findById(Long id) {
-        return mapToDto(getRoleEntityById(id));
+        return mapToDto(findRoleById(id));
     }
 
     @Override
     public RoleDto update(Long id, RoleDto roleDto) {
-        Role role = getRoleEntityById(id);
+        Role role = findRoleById(id);
         role.setName(roleDto.getName());
         role.setDescription(roleDto.getDescription());
         Role updatedRole = roleRepository.save(role);
@@ -47,8 +47,14 @@ public class RoleServiceImpl implements RoleService {
     }
 
     @Override
-    public Role getRoleEntityById(Long id) {
+    public Role findRoleById(Long id) {
         return roleRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Role not found for id: " + id));
+    }
+
+    @Override
+    public void deleteById(Long id) {
+        Role role = findRoleById(id);
+        roleRepository.delete(role);
     }
 
     private RoleDto mapToDto(Role role) {

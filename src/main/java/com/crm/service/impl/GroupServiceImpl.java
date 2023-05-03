@@ -41,7 +41,7 @@ public class GroupServiceImpl implements GroupService {
     @Override
     public GroupWithRolesDto addRole(Long groupId, Long roleId) {
         Group group = getGroupEntityById(groupId);
-        Role role = roleService.getRoleEntityById(roleId);
+        Role role = roleService.findRoleById(roleId);
         group.addRole(role);
         Group updatedGroup = groupRepository.save(group);
         return mapToDtoWithRoles(updatedGroup);
@@ -50,7 +50,7 @@ public class GroupServiceImpl implements GroupService {
     @Override
     public GroupWithRolesDto removeRole(Long groupId, Long roleId) {
         Group group = getGroupEntityById(groupId);
-        Role role = roleService.getRoleEntityById(roleId);
+        Role role = roleService.findRoleById(roleId);
         group.removeRole(role);
         Group updatedGroup = groupRepository.save(group);
         return mapToDtoWithRoles(updatedGroup);

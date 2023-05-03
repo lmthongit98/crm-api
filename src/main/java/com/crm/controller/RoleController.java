@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,12 +21,11 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("api/v1/roles")
-//@Tag(name = "REST APIs for Role Resource")
 public class RoleController {
 
     private final RoleService roleService;
 
-    @Operation(summary = "Find all roles", description = "Find all roles in the database")
+    @Operation(summary = "Find all roles")
     @ApiResponse(responseCode = "200", description = "Http Status 200 OK")
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = {Permission.ROLE_VIEW, Permission.ROLE_EDIT})
@@ -35,7 +35,7 @@ public class RoleController {
         return new ResponseEntity<>(roles, HttpStatus.OK);
     }
 
-    @Operation(summary = "Find role by id", description = "Find role by id in the database")
+    @Operation(summary = "Find role by id")
     @ApiResponse(responseCode = "200", description = "Http Status 200 OK")
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = {Permission.ROLE_VIEW, Permission.ROLE_EDIT})
@@ -45,7 +45,7 @@ public class RoleController {
         return new ResponseEntity<>(role, HttpStatus.OK);
     }
 
-    @Operation(summary = "Crate role", description = "Create a new role and save to database")
+    @Operation(summary = "Crate role")
     @ApiResponse(responseCode = "201", description = "Http Status 201 OK")
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.ROLE_EDIT)
@@ -59,7 +59,7 @@ public class RoleController {
         return new ResponseEntity<>(savedRole, HttpStatus.CREATED);
     }
 
-    @Operation(summary = "Update role by id", description = "Update role by id and save to the database")
+    @Operation(summary = "Update role by id")
     @ApiResponse(responseCode = "200", description = "Http Status 200 OK")
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.ROLE_EDIT)
@@ -71,6 +71,19 @@ public class RoleController {
         }
         RoleDto updatedRole = roleService.update(id, roleDto);
         return new ResponseEntity<>(updatedRole, HttpStatus.OK);
+    }
+
+    @Operation(summary = "Delete role by id")
+    @ApiResponse(responseCode = "200", description = "Http Status 200 OK")
+    @SecurityRequirement(name = "Bear Authentication")
+    @HasAnyPermissions(permissions = Permission.ROLE_DELETION)
+    @DeleteMapping("/{id}")
+    public Object deleteRoleById(@PathVariable("id") @NotNull Long id, BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            return new ResponseEntity<>(ErrorHelper.getAllError(bindingResult), HttpStatus.BAD_REQUEST);
+        }
+        roleService.deleteById(id);
+        return new ResponseEntity<>("Deleted role successfully!", HttpStatus.OK);
     }
 
 }
