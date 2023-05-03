@@ -71,7 +71,7 @@ public class TaskServiceImpl implements TaskService {
     }
 
     @Override
-    public List<TaskResponseDto> filterTasksByAssignees( List<Long> assigneeIds) {
+    public List<TaskResponseDto> filterTasksByAssignees(List<Long> assigneeIds) {
         List<Task> tasks = CollectionUtils.isEmpty(assigneeIds) ? taskRepository.findAll() : taskRepository.findByAssignee_IdIn(assigneeIds);
         return tasks.stream().map(this::mapToDto).collect(Collectors.toList());
     }

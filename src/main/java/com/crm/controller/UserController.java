@@ -1,9 +1,11 @@
 package com.crm.controller;
 
+import com.crm.common.constant.AppConstants;
 import com.crm.dto.PasswordDto;
 import com.crm.dto.request.UserRequestDto;
 import com.crm.dto.UserToUpdateDto;
 import com.crm.dto.UserWithRolesDto;
+import com.crm.dto.response.AbstractResponseDto;
 import com.crm.dto.response.UserResponseDto;
 import com.crm.security.anotations.HasAnyPermissions;
 import com.crm.security.enums.Permission;
@@ -11,7 +13,7 @@ import com.crm.service.UserService;
 import com.crm.common.util.ErrorHelper;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -63,9 +65,13 @@ public class UserController {
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.USER_VIEW)
     @GetMapping
-    public Object getAllUsers() {
-        List<UserResponseDto> users = userService.findAll();
-        return new ResponseEntity<>(users, HttpStatus.OK);
+    public Object getAllUsers(@RequestParam(value = "searchKey", defaultValue = AppConstants.EMPTY, required = false) String searchKey,
+                              @RequestParam(value = "pageNo", defaultValue = AppConstants.DEFAULT_PAGE_NUMBER, required = false) int pageNo,
+                              @RequestParam(value = "pageSize", defaultValue = AppConstants.DEFAULT_PAGE_SIZE, required = false) int pageSize,
+                              @RequestParam(value = "sortBy", defaultValue = AppConstants.DEFAULT_SORT_BY, required = false) String sortBy,
+                              @RequestParam(value = "sortDir", defaultValue = AppConstants.DEFAULT_SORT_DIRECTION, required = false) String sortDir) {
+        AbstractResponseDto<UserResponseDto> responseDto = userService.searchUsers(searchKey, pageNo, pageSize, sortBy, sortDir);
+        return new ResponseEntity<>(responseDto, HttpStatus.OK);
     }
 
     @SecurityRequirement(name = "Bear Authentication")
@@ -78,9 +84,9 @@ public class UserController {
 
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.USER_DELETION)
-    @DeleteMapping("/{id}")
-    public void deleteUser(@PathVariable("id") @NotNull Long id) {
-        userService.delete(id);
+    @DeleteMapping
+    public void deleteUser(@RequestParam @NotEmpty List<Long> ids) {
+        userService.delete(ids);
     }
 
 }

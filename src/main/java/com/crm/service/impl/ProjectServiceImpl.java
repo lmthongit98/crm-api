@@ -1,9 +1,9 @@
 package com.crm.service.impl;
 
 import com.crm.dto.request.ProjectRequestDto;
+import com.crm.dto.response.AbstractResponseDto;
 import com.crm.dto.response.ProjectResponseDto;
-import com.crm.dto.response.ProjectResponsePagingDto;
-import com.crm.dto.response.ProjectDetailDto;
+import com.crm.dto.response.ProjectDetailResponseDto;
 import com.crm.exception.ResourceNotFoundException;
 import com.crm.model.Project;
 import com.crm.model.User;
@@ -37,7 +37,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public ProjectDetailDto addMembers(Long projectId, List<Long> userIds) {
+    public ProjectDetailResponseDto addMembers(Long projectId, List<Long> userIds) {
         Project project = findProjectById(projectId);
         List<User> users = userRepository.findAllById(userIds);
         project.addMember(new HashSet<>(users));
@@ -46,7 +46,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public ProjectDetailDto removeMembers(Long projectId, List<Long> userIds) {
+    public ProjectDetailResponseDto removeMembers(Long projectId, List<Long> userIds) {
         Project project = findProjectById(projectId);
         List<User> users = userRepository.findAllById(userIds);
         project.removeMember(new HashSet<>(users));
@@ -55,27 +55,26 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public ProjectResponsePagingDto getAllProjects(String searchKey, int pageNo, int pageSize, String sortBy, String sortDir) {
+    public AbstractResponseDto<ProjectDetailResponseDto> getAllProjects(String searchKey, int pageNo, int pageSize, String sortBy, String sortDir) {
         Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name()) ? Sort.by(sortBy).ascending()
                 : Sort.by(sortBy).descending();
-
         Pageable pageable = PageRequest.of(pageNo, pageSize, sort);
 
         Page<Project> projects = projectRepository.searchProjects(searchKey, pageable);
         List<Project> listOfProjects = projects.getContent();
-        List<ProjectDetailDto> content = listOfProjects.stream().map(this::mapToProjectWithMembersDto).toList();
-        ProjectResponsePagingDto dto = new ProjectResponsePagingDto();
-        dto.setContent(content);
-        dto.setPageNo(projects.getNumber());
-        dto.setPageSize(projects.getSize());
-        dto.setTotalElements(projects.getTotalElements());
-        dto.setTotalPages(projects.getTotalPages());
-        dto.setLast(projects.isLast());
-        return dto;
+        List<ProjectDetailResponseDto> content = listOfProjects.stream().map(this::mapToProjectWithMembersDto).toList();
+        AbstractResponseDto<ProjectDetailResponseDto> responseDto = new AbstractResponseDto<>();
+        responseDto.setContent(content);
+        responseDto.setPageNo(projects.getNumber());
+        responseDto.setPageSize(projects.getSize());
+        responseDto.setTotalElements(projects.getTotalElements());
+        responseDto.setTotalPages(projects.getTotalPages());
+        responseDto.setLast(projects.isLast());
+        return responseDto;
     }
 
     @Override
-    public ProjectDetailDto findById(Long id) {
+    public ProjectDetailResponseDto findById(Long id) {
         Project project = findProjectById(id);
         return mapToProjectWithMembersDto(project);
     }
@@ -101,8 +100,8 @@ public class ProjectServiceImpl implements ProjectService {
         return projectRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Project not found for id: " + id));
     }
 
-    private ProjectDetailDto mapToProjectWithMembersDto(Project savedProject) {
-        return modelMapper.map(savedProject, ProjectDetailDto.class);
+    private ProjectDetailResponseDto mapToProjectWithMembersDto(Project savedProject) {
+        return modelMapper.map(savedProject, ProjectDetailResponseDto.class);
     }
 
     private Project mapToEntity(ProjectRequestDto projectRequestDto) {

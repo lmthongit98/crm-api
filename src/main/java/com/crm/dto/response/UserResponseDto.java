@@ -10,7 +10,7 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class UserResponseDto extends AbstractDto{
+public class UserResponseDto extends AbstractResponseDto<UserResponseDto> {
     private Long id;
     private String username;
     private String displayName;

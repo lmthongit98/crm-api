@@ -3,6 +3,7 @@ package com.crm.service.impl;
 import com.crm.common.enums.UserStatus;
 import com.crm.dto.*;
 import com.crm.dto.request.UserRequestDto;
+import com.crm.dto.response.AbstractResponseDto;
 import com.crm.dto.response.UserResponseDto;
 import com.crm.exception.BadRequestException;
 import com.crm.exception.ResourceNotFoundException;
@@ -11,13 +12,16 @@ import com.crm.repository.UserRepository;
 import com.crm.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -54,12 +58,6 @@ public class UserServiceImpl implements UserService {
     @Override
     public User findByUsername(String username) {
         return userRepository.findByUsernameAndStatus(username, UserStatus.ACTIVE).orElseThrow(() -> new ResourceNotFoundException("User not found for username: " + username));
-    }
-
-    @Override
-    public List<UserResponseDto> findAll() {
-        List<User> users = userRepository.findAll();
-        return users.stream().map(this::mapToDto).collect(Collectors.toList());
     }
 
     @Override
@@ -101,10 +99,31 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public void delete(Long id) {
-        User user = findUserById(id);
-        user.setStatus(UserStatus.DELETED);
-        userRepository.save(user);
+    public void delete(List<Long> ids) {
+        for (Long id : ids) {
+            User user = findUserById(id);
+            user.setStatus(UserStatus.DELETED);
+            userRepository.save(user);
+        }
+    }
+
+    @Override
+    public AbstractResponseDto<UserResponseDto> searchUsers(String searchKey, int pageNo, int pageSize, String sortBy, String sortDir) {
+        Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name()) ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
+
+        Pageable pageable = PageRequest.of(pageNo, pageSize, sort);
+        Page<User> users = userRepository.searchUsers(searchKey, pageable);
+        List<User> listOfUsers = users.getContent();
+        List<UserResponseDto> content = listOfUsers.stream().map(this::mapToDto).toList();
+        AbstractResponseDto<UserResponseDto> responseDto = new AbstractResponseDto<>();
+        responseDto.setContent(content);
+        responseDto.setPageNo(users.getNumber());
+        responseDto.setPageSize(users.getSize());
+        responseDto.setTotalElements(users.getTotalElements());
+        responseDto.setTotalPages(users.getTotalPages());
+        responseDto.setLast(users.isLast());
+        return responseDto;
     }
 
     private UserResponseDto mapToDto(User user) {

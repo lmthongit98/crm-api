@@ -2,6 +2,8 @@ package com.crm.repository;
 
 import com.crm.common.enums.UserStatus;
 import com.crm.model.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -17,4 +19,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query("SELECT u FROM User u LEFT JOIN FETCH u.group g LEFT JOIN FETCH g.roles WHERE u.username = ?1 AND u.status = ?2")
     Optional<User> findByUsernameAndStatus(String username, UserStatus active);
+
+    @Query("SELECT u FROM User u WHERE " +
+            "(u.username LIKE CONCAT('%', :searchKey, '%') OR " +
+            "u.displayName LIKE CONCAT('%', :searchKey, '%')) AND " +
+            "u.status != 'DELETED'")
+    Page<User> searchUsers(String searchKey, Pageable pageable);
 }

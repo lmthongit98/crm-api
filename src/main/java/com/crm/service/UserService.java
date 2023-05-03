@@ -4,6 +4,7 @@ import com.crm.dto.PasswordDto;
 import com.crm.dto.request.UserRequestDto;
 import com.crm.dto.UserToUpdateDto;
 import com.crm.dto.UserWithRolesDto;
+import com.crm.dto.response.AbstractResponseDto;
 import com.crm.dto.response.UserResponseDto;
 import com.crm.model.User;
 
@@ -16,13 +17,13 @@ public interface UserService {
 
     User findByUsername(String username);
 
-    List<UserResponseDto> findAll();
-
     UserResponseDto update(Long id, UserToUpdateDto userToUpdateDto);
 
     void changePassword(Long userId, PasswordDto passwordDto);
 
     User findUserById(Long id);
 
-    void delete(Long id);
+    void delete(List<Long> ids);
+
+    AbstractResponseDto<UserResponseDto> searchUsers(String searchKey, int pageNo, int pageSize, String sortBy, String sortDir);
 }

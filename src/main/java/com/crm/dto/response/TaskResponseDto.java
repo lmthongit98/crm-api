@@ -16,7 +16,7 @@ import java.util.Set;
 @AllArgsConstructor
 @NoArgsConstructor
 @SuperBuilder
-public class TaskResponseDto extends AbstractDto {
+public class TaskResponseDto extends AbstractResponseDto<TaskResponseDto> {
     private String name;
     private String description;
     private TaskType type;

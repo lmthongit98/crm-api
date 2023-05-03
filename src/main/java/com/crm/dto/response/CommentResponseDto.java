@@ -11,7 +11,7 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 @AllArgsConstructor
 @NoArgsConstructor
-public class CommentResponseDto extends AbstractDto{
+public class CommentResponseDto extends AbstractResponseDto<CommentResponseDto> {
     private String body;
     private UserResponseDto user;
 }

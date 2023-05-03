@@ -12,7 +12,7 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 @AllArgsConstructor
 @NoArgsConstructor
-public class ProjectResponseDto extends AbstractDto{
+public class ProjectResponseDto extends AbstractResponseDto<ProjectResponseDto> {
     private String name;
     private String description;
     private ProjectType type;

@@ -14,7 +14,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @SuperBuilder
-public class ProjectDetailDto extends AbstractDto {
+public class ProjectDetailResponseDto extends AbstractResponseDto<ProjectDetailResponseDto> {
     private String name;
     private String description;
     private ProjectType type;
