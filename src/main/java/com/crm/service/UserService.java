@@ -23,4 +23,6 @@ public interface UserService {
     void changePassword(Long userId, PasswordDto passwordDto);
 
     User findUserById(Long id);
+
+    void delete(Long id);
 }

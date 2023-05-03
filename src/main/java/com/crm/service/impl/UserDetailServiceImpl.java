@@ -1,5 +1,6 @@
 package com.crm.service.impl;
 
+import com.crm.common.enums.UserStatus;
 import com.crm.model.User;
 import com.crm.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +24,7 @@ public class UserDetailServiceImpl implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByUsername(username).orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
+        User user = userRepository.findByUsernameAndStatus(username, UserStatus.ACTIVE).orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
         Set<GrantedAuthority> authorities = new HashSet<>();
         if(!Objects.isNull(user.getGroup())) {
            authorities = user.getGroup().getRoles().stream().map(role -> new SimpleGrantedAuthority(role.getName().name())).collect(Collectors.toSet());

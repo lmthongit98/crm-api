@@ -1,5 +1,6 @@
 package com.crm.service.impl;
 
+import com.crm.common.enums.UserStatus;
 import com.crm.dto.*;
 import com.crm.dto.request.UserRequestDto;
 import com.crm.dto.response.UserResponseDto;
@@ -52,7 +53,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User findByUsername(String username) {
-        return userRepository.findByUsername(username).orElseThrow(() -> new ResourceNotFoundException("User not found for username: " + username));
+        return userRepository.findByUsernameAndStatus(username, UserStatus.ACTIVE).orElseThrow(() -> new ResourceNotFoundException("User not found for username: " + username));
     }
 
     @Override
@@ -96,7 +97,14 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User findUserById(Long id) {
-        return userRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("User not found for id: " + id));
+        return userRepository.findByIdAndStatus(id, UserStatus.ACTIVE).orElseThrow(() -> new ResourceNotFoundException("User not found for id: " + id));
+    }
+
+    @Override
+    public void delete(Long id) {
+        User user = findUserById(id);
+        user.setStatus(UserStatus.DELETED);
+        userRepository.save(user);
     }
 
     private UserResponseDto mapToDto(User user) {

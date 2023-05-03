@@ -11,6 +11,7 @@ import com.crm.service.UserService;
 import com.crm.common.util.ErrorHelper;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -73,6 +74,13 @@ public class UserController {
     public Object findRoleByUsername(@PathVariable("username") String username) {
         UserWithRolesDto userWithRolesDto = userService.findUserWithRolesByUsername(username);
         return new ResponseEntity<>(userWithRolesDto, HttpStatus.OK);
+    }
+
+    @SecurityRequirement(name = "Bear Authentication")
+    @HasAnyPermissions(permissions = Permission.USER_DELETION)
+    @DeleteMapping("/{id}")
+    public void deleteUser(@PathVariable("id") @NotNull Long id) {
+        userService.delete(id);
     }
 
 }

@@ -9,6 +9,7 @@ public enum Permission {
     GROUP_DELETION,
     USER_VIEW,
     USER_EDIT,
+    USER_DELETION,
     PROJECT_VIEW,
     PROJECT_DELETION,
     PROJECT_EDIT,
