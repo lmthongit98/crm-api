@@ -116,14 +116,7 @@ public class UserServiceImpl implements UserService {
         Page<User> users = userRepository.searchUsers(searchKey, pageable);
         List<User> listOfUsers = users.getContent();
         List<UserResponseDto> content = listOfUsers.stream().map(this::mapToDto).toList();
-        AbstractResponseDto<UserResponseDto> responseDto = new AbstractResponseDto<>();
-        responseDto.setContent(content);
-        responseDto.setPageNo(users.getNumber());
-        responseDto.setPageSize(users.getSize());
-        responseDto.setTotalElements(users.getTotalElements());
-        responseDto.setTotalPages(users.getTotalPages());
-        responseDto.setLast(users.isLast());
-        return responseDto;
+        return new AbstractResponseDto<>(users, content);
     }
 
     private UserResponseDto mapToDto(User user) {

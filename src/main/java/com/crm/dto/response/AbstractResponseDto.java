@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
+import org.springframework.data.domain.Page;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -29,4 +30,13 @@ public class AbstractResponseDto<T> implements Serializable {
     protected Long totalElements;
     protected Integer totalPages;
     protected Boolean last;
+
+    public AbstractResponseDto(Page<?> page, List<T> content) {
+        this.content = content;
+        this.pageNo = page.getNumber();
+        this.pageSize = page.getSize();
+        this.totalElements = page.getTotalElements();
+        this.totalPages = page.getTotalPages();
+        this.last = page.isLast();
+    }
 }

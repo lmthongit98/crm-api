@@ -63,14 +63,7 @@ public class ProjectServiceImpl implements ProjectService {
         Page<Project> projects = projectRepository.searchProjects(searchKey, pageable);
         List<Project> listOfProjects = projects.getContent();
         List<ProjectDetailResponseDto> content = listOfProjects.stream().map(this::mapToProjectWithMembersDto).toList();
-        AbstractResponseDto<ProjectDetailResponseDto> responseDto = new AbstractResponseDto<>();
-        responseDto.setContent(content);
-        responseDto.setPageNo(projects.getNumber());
-        responseDto.setPageSize(projects.getSize());
-        responseDto.setTotalElements(projects.getTotalElements());
-        responseDto.setTotalPages(projects.getTotalPages());
-        responseDto.setLast(projects.isLast());
-        return responseDto;
+        return new AbstractResponseDto<>(projects, content);
     }
 
     @Override
