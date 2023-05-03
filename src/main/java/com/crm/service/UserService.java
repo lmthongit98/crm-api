@@ -13,7 +13,7 @@ import java.util.List;
 public interface UserService {
     UserResponseDto save(UserRequestDto userRequestDto);
 
-    UserWithRolesDto findUserWithRolesByUsername(String username);
+    UserWithRolesDto findUserWithRolesById(Long userId);
 
     User findByUsername(String username);
 

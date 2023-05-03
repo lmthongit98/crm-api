@@ -14,6 +14,7 @@ import com.crm.common.util.ErrorHelper;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -76,9 +77,9 @@ public class UserController {
 
     @SecurityRequirement(name = "Bear Authentication")
     @HasAnyPermissions(permissions = Permission.USER_VIEW)
-    @GetMapping ("/{username}/roles")
-    public Object findRoleByUsername(@PathVariable("username") String username) {
-        UserWithRolesDto userWithRolesDto = userService.findUserWithRolesByUsername(username);
+    @GetMapping ("/{user-id}/roles")
+    public Object findRoleByUsername(@PathVariable("user-id") @NotNull Long userId) {
+        UserWithRolesDto userWithRolesDto = userService.findUserWithRolesById(userId);
         return new ResponseEntity<>(userWithRolesDto, HttpStatus.OK);
     }
 

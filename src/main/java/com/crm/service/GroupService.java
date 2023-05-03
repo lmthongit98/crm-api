@@ -18,9 +18,9 @@ public interface GroupService {
 
     GroupDto update(Long groupId, GroupDto groupDto);
 
-    void addUser(Long groupId, String username);
+    void addUser(Long groupId, Long userId);
 
-    void removeUser(Long groupId, String username);
+    void removeUser(Long groupId, Long userId);
 
     void deleteGroup(Long id);
 }

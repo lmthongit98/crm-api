@@ -40,8 +40,8 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserWithRolesDto findUserWithRolesByUsername(String username) {
-        User user = findByUsername(username);
+    public UserWithRolesDto findUserWithRolesById(Long userId) {
+        User user = findUserById(userId);
         UserWithRolesDto userWithRolesDto = UserWithRolesDto.builder()
                 .id(user.getId())
                 .username(user.getUsername())
@@ -49,8 +49,8 @@ public class UserServiceImpl implements UserService {
                 .email(user.getEmail())
                 .build();
         if (!Objects.isNull(user.getGroup()) && !CollectionUtils.isEmpty(user.getGroup().getRoles())) {
-            List<RoleDto> roleDtos = user.getGroup().getRoles().stream().map(role -> modelMapper.map(role, RoleDto.class)).toList();
-            userWithRolesDto.setRoles(roleDtos);
+            List<RoleDto> roles = user.getGroup().getRoles().stream().map(role -> modelMapper.map(role, RoleDto.class)).toList();
+            userWithRolesDto.setRoles(roles);
         }
         return userWithRolesDto;
     }

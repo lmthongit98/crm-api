@@ -66,16 +66,16 @@ public class GroupServiceImpl implements GroupService {
     }
 
     @Override
-    public void addUser(Long groupId, String username) {
-        User user = userService.findByUsername(username);
+    public void addUser(Long groupId, Long userId) {
+        User user = userService.findUserById(userId);
         Group group = findGroupById(groupId);
         group.addUser(user);
         groupRepository.save(group);
     }
 
     @Override
-    public void removeUser(Long groupId, String username) {
-        User user = userService.findByUsername(username);
+    public void removeUser(Long groupId, Long userId) {
+        User user = userService.findUserById(userId);
         Group group = findGroupById(groupId);
         group.removeUser(user);
         groupRepository.save(group);

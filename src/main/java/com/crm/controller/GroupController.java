@@ -84,19 +84,19 @@ public class GroupController {
     }
 
     @SecurityRequirement(name = "Bear Authentication")
-    @PostMapping("/add-user/{group-id}/{username}")
+    @PostMapping("/add-user/{group-id}/{user-id}")
     @HasAnyPermissions(permissions = Permission.GROUP_EDIT)
     public void addUser(@PathVariable(name = "group-id") @NotNull Long groupId,
-                        @PathVariable(name = "username") @NotBlank String username) {
-        groupService.addUser(groupId, username);
+                        @PathVariable(name = "user-id") @NotNull Long userId) {
+        groupService.addUser(groupId, userId);
     }
 
     @SecurityRequirement(name = "Bear Authentication")
-    @PostMapping("/remove-user/{group-id}/{username}")
+    @PostMapping("/remove-user/{group-id}/{user-id}")
     @HasAnyPermissions(permissions = Permission.GROUP_EDIT)
     public void removeUser(@PathVariable(name = "group-id") @NotNull Long groupId,
-                           @PathVariable(name = "username") @NotBlank String username) {
-        groupService.removeUser(groupId, username);
+                           @PathVariable(name = "user-id") @NotNull Long userId) {
+        groupService.removeUser(groupId, userId);
     }
 
     @SecurityRequirement(name = "Bear Authentication")
