@@ -12,6 +12,8 @@ import com.crm.repository.UserRepository;
 import com.crm.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -26,6 +28,8 @@ import java.util.Objects;
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
+
+    Logger logger = LoggerFactory.getLogger(this.getClass());
 
     private final UserRepository userRepository;
     private final ModelMapper modelMapper;
@@ -109,6 +113,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public AbstractResponseDto<UserResponseDto> searchUsers(String searchKey, int pageNo, int pageSize, String sortBy, String sortDir) {
+        logger.info("Starting search user with keyword: {}", searchKey);
         Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name()) ? Sort.by(sortBy).ascending()
                 : Sort.by(sortBy).descending();
 
