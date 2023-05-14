@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  mysqldocker:
+    container_name: mysqldocker
+    image: mysql:8.0.29
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: crm_db
+    ports:
+      - "3306:3306"
+    networks:
+      springboot-mysql-net:
+
+  crm-api:
+    container_name: crm-api
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysqldocker
+    networks:
+      springboot-mysql-net:
+    restart: on-failure
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+
+networks:
+  springboot-mysql-net:
