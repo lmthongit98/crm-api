@@ -7,6 +7,7 @@ import com.crm.dto.UserWithRolesDto;
 import com.crm.dto.response.AbstractResponseDto;
 import com.crm.dto.response.UserResponseDto;
 import com.crm.model.User;
+import org.springframework.core.io.Resource;
 
 import java.util.List;
 
@@ -26,4 +27,6 @@ public interface UserService {
     void delete(List<Long> ids);
 
     AbstractResponseDto<UserResponseDto> searchUsers(String searchKey, int pageNo, int pageSize, String sortBy, String sortDir);
+
+    Resource loadUserAvatarImg(Long id, String fileName);
 }

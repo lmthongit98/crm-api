@@ -10,9 +10,18 @@ spring:
     hibernate:
       ddl-auto: update
       show-sql: true
+  servlet:
+    multipart:
+      enabled: true
+      file-size-threshold: 2KB
+      max-file-size: 200MB
+      max-request-size: 215MB
+
 
 
 app:
   jwt-secret: daf66e01593f61a15b857cf433aae03a005812b31234e149036bcc8dee755dbb
   jwt-expiration-milliseconds: 604800000
+  file-upload:
+    root-path: user-avatars
 

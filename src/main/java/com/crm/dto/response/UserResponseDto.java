@@ -16,4 +16,5 @@ public class UserResponseDto extends AbstractResponseDto<UserResponseDto> {
     private String displayName;
     private String email;
     private UserStatus status;
+    private String avatar;
 }

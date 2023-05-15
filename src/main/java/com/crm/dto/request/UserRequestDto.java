@@ -26,6 +26,8 @@ public class UserRequestDto {
     @NotBlank
     private String displayName;
 
+    private String avatar;
+
     @UniqueEmail(message = "Email is already existed.")
     @NotBlank
     private String email;

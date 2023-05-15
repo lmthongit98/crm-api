@@ -1,7 +1,11 @@
 package com.crm.service.impl;
 
 import com.crm.common.enums.UserStatus;
-import com.crm.dto.*;
+import com.crm.controller.UserController;
+import com.crm.dto.PasswordDto;
+import com.crm.dto.RoleDto;
+import com.crm.dto.UserToUpdateDto;
+import com.crm.dto.UserWithRolesDto;
 import com.crm.dto.request.UserRequestDto;
 import com.crm.dto.response.AbstractResponseDto;
 import com.crm.dto.response.UserResponseDto;
@@ -11,9 +15,13 @@ import com.crm.model.User;
 import com.crm.repository.UserRepository;
 import com.crm.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
 import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -21,7 +29,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
+import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Objects;
 
@@ -30,6 +41,9 @@ import java.util.Objects;
 public class UserServiceImpl implements UserService {
 
     Logger logger = LoggerFactory.getLogger(this.getClass());
+
+    @Value("${app.file-upload.root-path}")
+    private String rootPath;
 
     private final UserRepository userRepository;
     private final ModelMapper modelMapper;
@@ -124,8 +138,29 @@ public class UserServiceImpl implements UserService {
         return new AbstractResponseDto<>(users, content);
     }
 
+    @Override
+    public Resource loadUserAvatarImg(Long id, String fileName) {
+        try {
+            Path root = Paths.get(rootPath);
+            Path file = root.resolve(id.toString()).resolve(fileName);
+            Resource resource = new UrlResource(file.toUri());
+            if (resource.exists() || resource.isReadable()) {
+                return resource;
+            }
+        } catch (Exception e) {
+            logger.error("Fail to load file", e);
+        }
+        return null;
+    }
+
     private UserResponseDto mapToDto(User user) {
-        return modelMapper.map(user, UserResponseDto.class);
+        UserResponseDto userResponseDto = modelMapper.map(user, UserResponseDto.class);
+        if(StringUtils.isNotEmpty(user.getAvatar())) {
+            final String GET_USER_AVATAR = "getUserAvatar";
+            final String avatarUrlPath = MvcUriComponentsBuilder.fromMethodName(UserController.class, GET_USER_AVATAR, user.getId(), user.getAvatar()).build().toUriString();
+            userResponseDto.setAvatar(avatarUrlPath);
+        }
+        return userResponseDto;
     }
 
     private User mapToEntity(UserRequestDto userRequestDto) {

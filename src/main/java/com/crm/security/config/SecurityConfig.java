@@ -54,6 +54,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/auth/login").permitAll()
                 .requestMatchers("/swagger-ui/**").permitAll()
                 .requestMatchers("/v3/api-docs/**").permitAll()
+                .requestMatchers("/api/v1/users/file/**").permitAll()
                 .anyRequest().authenticated();
 
         http.exceptionHandling(ex -> ex.authenticationEntryPoint(authenticationEntryPoint));
