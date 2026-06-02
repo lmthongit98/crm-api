@@ -290,6 +290,25 @@ ticket_status_at_least() {
   [ "$(status_rank "$1")" -ge "$(status_rank "$2")" ]
 }
 
+lane_requires_analysis() {
+  case "$1" in
+    tiny|normal_fast) return 1 ;;
+    *) return 0 ;;
+  esac
+}
+
+status_requires_analysis_artifact() {
+  local status="$1" lane="$2"
+  case "$status" in
+    analysis_complete) return 0 ;;
+    proposal_pending_approval|proposal_approved|decomposed|plan_pending_approval|plan_approved|implementation_complete|code_review_approved|uat_generated)
+      lane_requires_analysis "$lane"
+      return $?
+      ;;
+    *) return 1 ;;
+  esac
+}
+
 ticket_gate_passes() {
   local gate="$1" status="$2"
   case "$gate:$status" in
@@ -396,9 +415,12 @@ ticket_row_status() {
   sql "SELECT status FROM ticket_workflow WHERE ticket_id=$(sql_literal "$1");"
 }
 
-ticket_effective_status() {
-  local id="$1" status role child_ids work_dir
-  status="$(ticket_row_status "$id")"
+ticket_workflow_snapshot() {
+  sql "SELECT COALESCE(status, '') || '|' || COALESCE(proposal_approved_at, '') || '|' || COALESCE(plan_approved_at, '') || '|' || COALESCE(code_review_approved_at, '') || '|' || COALESCE(updated_at, '') FROM ticket_workflow WHERE ticket_id=$(sql_literal "$1");"
+}
+
+ticket_effective_status_from_row_status() {
+  local id="$1" status="$2" role child_ids work_dir
   [ -n "$status" ] || return 0
   role="$(ticket_role "$id")"
   child_ids="$(ticket_child_ids "$id")"
@@ -412,8 +434,10 @@ ticket_effective_status() {
   printf '%s' "$status"
 }
 
-ticket_approval_fields() {
-  sql "SELECT proposal_approved_at || '|' || plan_approved_at || '|' || code_review_approved_at FROM ticket_workflow WHERE ticket_id=$(sql_literal "$1");"
+ticket_effective_status() {
+  local id="$1" status
+  status="$(ticket_row_status "$id")"
+  ticket_effective_status_from_row_status "$id" "$status"
 }
 
 sync_ticket_work_status_files() {
@@ -490,14 +514,15 @@ verify_ticket_internal() {
   local proposal_id="" analysis_id="" plan_id="" validation_id="" uat_id=""
   local proposal_approved_at="" plan_approved_at="" code_review_approved_at=""
   local validation_path="" uat_path="" commands_placeholder="" results_placeholder="" proof_placeholder=""
-  local role="" parent_id="" child_ids=""
+  local role="" parent_id="" child_ids="" lane=""
 
-  stored_status="$(ticket_row_status "$id")"
+  IFS='|' read -r stored_status proposal_approved_at plan_approved_at code_review_approved_at _ <<< "$(ticket_workflow_snapshot "$id")"
   [ -n "$stored_status" ] || { echo "missing ticket_workflow row for $id"; return 1; }
-  status="$(ticket_effective_status "$id")"
+  status="$(ticket_effective_status_from_row_status "$id" "$stored_status")"
   ticket_path="$REPO_ROOT/docs/tickets/$id.md"
   [ -f "$ticket_path" ] || { echo "missing ticket file $ticket_path"; return 1; }
   work_dir="$(work_dir_for_ticket "$id" || true)"
+  lane="$(ticket_lane "$id")"
   role="$(ticket_role "$id")"
   parent_id="$(ticket_parent_id "$id" || true)"
   child_ids="$(ticket_child_ids "$id")"
@@ -529,8 +554,6 @@ verify_ticket_internal() {
     return 1
   fi
 
-  IFS='|' read -r proposal_approved_at plan_approved_at code_review_approved_at <<< "$(ticket_approval_fields "$id")"
-
   if [ "$status" = "decomposed" ]; then
     :
   elif status_for_gate_timestamp "$status"; then
@@ -555,7 +578,7 @@ verify_ticket_internal() {
   fi
 
   if [ -n "$work_dir" ]; then
-    if ticket_status_at_least "$status" "analysis_complete" && [ ! -f "$work_dir/analysis.md" ]; then
+    if status_requires_analysis_artifact "$status" "$lane" && [ ! -f "$work_dir/analysis.md" ]; then
       echo "missing analysis.md in $(basename "$work_dir")"
       issues=1
     fi
@@ -800,8 +823,9 @@ ticket_next_phase() {
 }
 
 ticket_missing_artifacts() {
-  local id="$1" status="$2" work_dir="$3" missing=()
-  if ticket_status_at_least "$status" "analysis_complete" && [ ! -f "$work_dir/analysis.md" ]; then
+  local id="$1" status="$2" work_dir="$3" missing=() lane=""
+  lane="$(ticket_lane "$id")"
+  if status_requires_analysis_artifact "$status" "$lane" && [ ! -f "$work_dir/analysis.md" ]; then
     missing+=("analysis.md")
   fi
   if ticket_status_at_least "$status" "proposal_pending_approval" && [ ! -f "$work_dir/proposal.md" ]; then
@@ -982,19 +1006,18 @@ cmd_ticket() {
       info "Ticket $id loaded from docs/tickets/$id.md."
       ;;
     status)
-      local id="" status lane type role parent_id child_ids work_dir proposal_approved_at plan_approved_at code_review_approved_at updated_at
+      local id="" status row_status lane type role parent_id child_ids work_dir proposal_approved_at plan_approved_at code_review_approved_at updated_at
       while [ $# -gt 0 ]; do case "$1" in --id) id="$2"; shift 2 ;; *) die "ticket status: unknown flag $1" ;; esac; done
       [ -n "$id" ] || die "ticket status: --id is required"
-      status="$(ticket_effective_status "$id")"
-      [ -n "$status" ] || die "ticket status: ticket '$id' not found"
+      IFS='|' read -r row_status proposal_approved_at plan_approved_at code_review_approved_at updated_at <<< "$(ticket_workflow_snapshot "$id")"
+      [ -n "$row_status" ] || die "ticket status: ticket '$id' not found"
+      status="$(ticket_effective_status_from_row_status "$id" "$row_status")"
       lane="$(ticket_lane "$id")"
       type="$(ticket_type "$id")"
       role="$(ticket_role "$id")"
       parent_id="$(ticket_parent_id "$id" || true)"
       child_ids="$(ticket_child_ids "$id")"
       work_dir="$(work_dir_from_status_or_default "$id")"
-      IFS='|' read -r proposal_approved_at plan_approved_at code_review_approved_at <<< "$(ticket_approval_fields "$id")"
-      updated_at="$(sql "SELECT updated_at FROM ticket_workflow WHERE ticket_id=$(sql_literal "$id");")"
       printf 'ticket_id=%s\n' "$id"
       printf 'type=%s\n' "$type"
       printf 'lane=%s\n' "$lane"

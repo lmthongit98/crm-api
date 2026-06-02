@@ -11,6 +11,7 @@ constraints, and delete behavior.
 - `Group`: organizational grouping used to bundle users and roles.
 - `Role`: permission-bearing role record.
 - `Project`: project container with members and tasks.
+- `Sprint`: project-owned sprint record for time-boxed delivery planning.
 - `Task`: task record tied to a project and optional assignee.
 - `Comment`: task comment authored by a user.
 
@@ -25,8 +26,12 @@ Observed ownership and cardinality:
 - A `Group` has many `User` records.
 - A `Group` has many `Role` records through the `group_role` join table.
 - A `Project` has many `Task` records and owns that relationship.
+- A `Project` has many `Sprint` records and owns that relationship.
 - A `Project` has many `User` members through the `project_user` join table.
+- A `Sprint` belongs to one `Project`.
+- A `Sprint` has many `Task` records through an optional task-side sprint link.
 - A `Task` belongs to one `Project`.
+- A `Task` may belong to zero or one `Sprint`.
 - A `Task` may have one assigned `User`.
 - A `Task` has many `Comment` records.
 - A `Comment` belongs to one `Task` and one `User`.
@@ -45,6 +50,7 @@ validators:
 - `User.email` is unique.
 - `Group.name` is unique.
 - `Project.name` is unique.
+- `Sprint.name` is unique within one project.
 - `Role.name` is unique.
 - `UserRequestDto` also validates username and email uniqueness before save.
 - `GroupDto` validates group-name uniqueness before save.
@@ -58,6 +64,8 @@ Required fields are enforced mostly at the entity and DTO level:
   request DTO is looser and does not add validation annotations.
 - Tasks require name, type, priority, status, and project association in the
   entity model; the request DTO enforces only project id and name directly.
+- Sprints require name, status, and project association; `goal`, `startDate`,
+  and `endDate` are optional in the persistence model.
 - Comments require body, user, and task.
 
 ## Deletion Behavior
@@ -67,8 +75,14 @@ Deletion is mixed and should be treated carefully:
 - `User` is soft-deleted by setting `status = DELETED`.
 - `Project`, `Group`, `Role`, `Task`, and `Comment` are deleted through JPA
   repository delete calls.
+- `Sprint` is modeled as a project-owned record and will be removed with its
+  owning project through JPA cascade from `Project`.
 - `Project.tasks` is configured with cascade delete and orphan removal, so task
   rows are removed when the owning project is deleted.
+- `Project.sprints` is configured with cascade delete and orphan removal, so
+  sprint rows are removed when the owning project is deleted.
+- `Task.sprint` is nullable so backlog work can exist without sprint
+  assignment.
 - `Comment` rows are removed when the comment itself is deleted, but no cascade
   delete path from `Task` to `Comment` is explicitly configured.
 - `Group` and `Role` deletion logic manually clears relationships before
@@ -95,9 +109,9 @@ Areas that would be migration-sensitive if changed:
 
 - Unique constraints on `User`, `Group`, `Project`, and `Role`.
 - Enum-backed columns for `UserStatus`, `ProjectType`, `TaskType`, `Priority`,
-  `TaskStatus`, and `Permission`.
+  `TaskStatus`, `SprintStatus`, and `Permission`.
 - Relationship tables `group_role` and `project_user`.
-- Nullable versus non-nullable foreign keys for task, comment, and group
+- Nullable versus non-nullable foreign keys for sprint, task, comment, and group
   relationships.
 - Soft-delete semantics on `User.status`.
 - Audit columns inherited from `BaseEntity`.
@@ -119,4 +133,3 @@ Areas that would be migration-sensitive if changed:
 This is a straightforward CRUD-style domain model. There is no sign of event
 outbox tables, read models, history tables, or separate reporting schemas in
 the repo.
-
