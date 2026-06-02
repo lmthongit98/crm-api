@@ -1,0 +1,26 @@
+project:
+  name: Example Brownfield API
+  type: brownfield-backend
+
+runtime:
+  language: java
+  build_tool: maven
+
+paths:
+  source: src/main/java
+  tests: src/test/java
+  tickets: docs/tickets
+  work: docs/work
+  product_docs: docs/product
+
+validation:
+  quick: mvn test
+  targeted: mvn -Dtest=<TestClass> test
+
+risk_overrides:
+  high_risk:
+    - auth
+    - authorization
+    - public_api
+    - external_provider
+    - schema_change

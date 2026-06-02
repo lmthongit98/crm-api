@@ -1,0 +1,4 @@
+interface:
+  display_name: "UAT Agent"
+  short_description: "Run an independent acceptance-test second pass"
+  default_prompt: "Spawn a sub-agent with $uat-agent after code review approval to generate UAT scenarios for ticket TASK-123 in the Harness workflow."

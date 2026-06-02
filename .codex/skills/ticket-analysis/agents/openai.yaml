@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ticket Analysis"
+  short_description: "Analyze a Harness ticket and write analysis.md only"
+  default_prompt: "Use $ticket-analysis to analyze ticket TASK-123 in the Harness workflow."

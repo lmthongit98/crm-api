@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ticket Implementation"
+  short_description: "Implement an approved Harness ticket slice"
+  default_prompt: "Use $ticket-implementation to implement ticket TASK-123 after plan approval in the Harness workflow."

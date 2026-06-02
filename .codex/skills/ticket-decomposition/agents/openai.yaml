@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ticket Decomposition"
+  short_description: "Split an oversized Harness ticket into child tickets and stop the parent at decomposed"
+  default_prompt: "Use $ticket-decomposition to split ticket TASK-123 into child tickets for the Harness workflow."

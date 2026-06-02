@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ticket Code Review"
+  short_description: "Review a ticket slice with findings-first output"
+  default_prompt: "Use $ticket-code-review to review ticket TASK-123 in the Harness workflow."

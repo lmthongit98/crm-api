@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ticket Proposal Plan"
+  short_description: "Write proposal.md or implementation-plan.md with gate checks"
+  default_prompt: "Use $ticket-proposal-plan to write the proposal or implementation plan for ticket TASK-123 in the Harness workflow."

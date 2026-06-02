@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ticket Orchestrator"
+  short_description: "Ask Harness for the next legal ticket phase and route execution"
+  default_prompt: "Use $ticket-orchestrator to determine the next legal phase for ticket TASK-123 in the Harness workflow."

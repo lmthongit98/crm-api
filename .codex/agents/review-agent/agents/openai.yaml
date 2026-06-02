@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Agent"
+  short_description: "Run an independent second-pass code review"
+  default_prompt: "Spawn a sub-agent with $review-agent for an independent review pass on ticket TASK-123 in the Harness workflow."

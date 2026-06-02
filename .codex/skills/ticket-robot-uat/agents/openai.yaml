@@ -1,0 +1,4 @@
+interface:
+  display_name: "Optional Ticket Robot UAT"
+  short_description: "Generate optional Robot UAT after code review approval"
+  default_prompt: "Use $ticket-robot-uat to generate optional Robot UAT for ticket TASK-123 in the Harness workflow."

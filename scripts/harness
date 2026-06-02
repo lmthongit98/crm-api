@@ -1,0 +1,1360 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+DB_PATH="${HARNESS_DB:-$REPO_ROOT/harness.db}"
+SCHEMA_DIR="$REPO_ROOT/scripts/schema"
+
+die() { printf 'error: %s\n' "$*" >&2; exit 1; }
+info() { printf '%s\n' "$*"; }
+sql() { sqlite3 -batch -cmd "PRAGMA foreign_keys = ON;" "$DB_PATH" "$@"; }
+sql_pretty() { sqlite3 -header -column -cmd "PRAGMA foreign_keys = ON;" "$DB_PATH" "$@"; }
+sql_file() { sqlite3 -batch -cmd "PRAGMA foreign_keys = ON;" "$DB_PATH" < "$1" >/dev/null; }
+trim() { printf '%s' "$1" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//'; }
+sql_escape() { printf '%s' "$1" | sed "s/'/''/g"; }
+sql_literal() { printf "'%s'" "$(sql_escape "$1")"; }
+sql_or_null() { [ -n "${1:-}" ] && sql_literal "$1" || printf 'NULL'; }
+
+usage() {
+  cat <<'EOF'
+Usage: scripts/harness <command> [args]
+
+Commands:
+  init                  Create harness.db if missing using the installed schema
+  migrate               Apply the installed schema surface
+  import brownfield     Import decisions markdown
+  import tracked        Import brownfield state plus ticket workflow docs
+  ticket load|status|gate|next|check-phase|start-phase|update|repair|approve
+  verify ticket         Verify one tracked ticket workflow slice
+  doctor                Verify all ticket workflow slices
+  export                Print a durable-state snapshot
+  decision add|verify   Add a decision or run its verification
+  trace                 Record an agent execution trace
+  query                 Query harness data
+EOF
+}
+
+need_db() { [ -f "$DB_PATH" ] || die "Database not found at $DB_PATH. Run: scripts/harness init"; }
+need_ticket_schema() {
+  need_db
+  local has_table
+  has_table="$(sql "SELECT name FROM sqlite_master WHERE type='table' AND name='ticket_workflow';")"
+  [ -n "$has_table" ] || die "Ticket workflow schema not found. Run: scripts/harness migrate"
+}
+
+normalize_token() {
+  printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//; s/[^a-z0-9]+/_/g; s/^_+//; s/_+$//'
+}
+normalize_lane() {
+  case "$(normalize_token "$1")" in
+    tiny|normal_fast|normal|high_risk) printf '%s' "$(normalize_token "$1")" ;;
+    *) die "unknown lane '$1'. Use: tiny, normal-fast, normal, or high-risk" ;;
+  esac
+}
+normalize_ticket_status() {
+  case "$(normalize_token "$1")" in
+    ticket_loaded|analysis_complete|proposal_pending_approval|proposal_approved|decomposed|plan_pending_approval|plan_approved|implementation_complete|code_review_approved|uat_generated|blocked)
+      printf '%s' "$(normalize_token "$1")"
+      ;;
+    *) die "unknown ticket status '$1'" ;;
+  esac
+}
+normalize_ticket_role() {
+  case "$(normalize_token "$1")" in
+    standalone|parent|child) printf '%s' "$(normalize_token "$1")" ;;
+    *) die "unknown ticket role '$1'. Use: standalone, parent, or child" ;;
+  esac
+}
+normalize_decision_status() {
+  case "$(normalize_token "$1")" in
+    proposed|accepted|superseded|rejected) printf '%s' "$(normalize_token "$1")" ;;
+    *) die "unknown decision status '$1'" ;;
+  esac
+}
+normalize_phase() {
+  case "$(normalize_token "$1")" in
+    analysis|proposal|implementation_plan|validation|uat)
+      printf '%s' "$(normalize_token "$1")"
+      ;;
+    *) die "unknown phase '$1'. Use: analysis, proposal, implementation-plan, validation, or uat" ;;
+  esac
+}
+normalize_friction() {
+  local value
+  value="$(normalize_token "${1:-}")"
+  case "$value" in
+    ""|none|missing_context|weak_proof|unclear_template|command_ux|policy_runtime_mismatch)
+      printf '%s' "$value"
+      ;;
+    *) die "unknown friction '$1'. Use: none, missing-context, weak-proof, unclear-template, command-ux, or policy-runtime-mismatch" ;;
+  esac
+}
+
+json_escape() {
+  local input="$1"
+  input=${input//\\/\\\\}
+  input=${input//\"/\\\"}
+  input=${input//$'\n'/\\n}
+  input=${input//$'\r'/\\r}
+  input=${input//$'\t'/\\t}
+  printf '%s' "$input"
+}
+json_array() {
+  local input="${1:-}" part trimmed first=1
+  IFS=',' read -r -a parts <<< "$input"
+  printf '['
+  for part in "${parts[@]}"; do
+    trimmed="$(trim "$part")"
+    [ -n "$trimmed" ] || continue
+    [ $first -eq 1 ] || printf ','
+    first=0
+    printf '"%s"' "$(json_escape "$trimmed")"
+  done
+  printf ']'
+}
+json_sql_value() {
+  [ -n "${1:-}" ] || { printf 'NULL'; return; }
+  printf "'%s'" "$(sql_escape "$(json_array "$1")")"
+}
+
+work_dir_for_ticket() {
+  local id="$1" match best_match=""
+  for match in "$REPO_ROOT"/docs/work/"$id"-*; do
+    [ -d "$match" ] || continue
+    if [ -z "$best_match" ] || [ ${#match} -lt ${#best_match} ]; then
+      best_match="$match"
+    fi
+  done
+  [ -n "$best_match" ] && printf '%s' "$best_match"
+}
+
+ticket_title() {
+  local id="$1" ticket_path="$REPO_ROOT/docs/tickets/$id.md"
+  [ -f "$ticket_path" ] || return 0
+  awk '/^# / {sub(/^# +/, ""); print; exit}' "$ticket_path"
+}
+
+ticket_metadata_value() {
+  local id="$1" key="$2" ticket_path="$REPO_ROOT/docs/tickets/$id.md"
+  [ -f "$ticket_path" ] || return 0
+  sed -n -E "s/^- ${key}:[[:space:]]*(.+)[[:space:]]*$/\\1/p" "$ticket_path" | head -n 1
+}
+
+ticket_lane() {
+  local id="$1" lane=""
+  lane="$(ticket_metadata_value "$id" "Lane" || true)"
+  if [ -z "$lane" ]; then
+    printf 'normal'
+    return 0
+  fi
+  normalize_lane "$lane"
+}
+
+ticket_type() {
+  local id="$1" type=""
+  type="$(ticket_metadata_value "$id" "Type" || true)"
+  [ -n "$type" ] && printf '%s' "$type" || printf 'feature'
+}
+
+ticket_role() {
+  local id="$1" role=""
+  role="$(ticket_metadata_value "$id" "Relationship" || true)"
+  if [ -z "$role" ]; then
+    printf 'standalone'
+    return 0
+  fi
+  normalize_ticket_role "$role"
+}
+
+ticket_parent_id() {
+  local id="$1" parent=""
+  parent="$(ticket_metadata_value "$id" "Parent ticket" || true)"
+  case "$(normalize_token "${parent:-}")" in
+    ""|none|n_a|na) return 0 ;;
+  esac
+  printf '%s' "$parent"
+}
+
+ticket_child_ids() {
+  local id="$1" ticket_file child_parent child_id child_ids=""
+  [ -d "$REPO_ROOT/docs/tickets" ] || return 0
+  for ticket_file in "$REPO_ROOT"/docs/tickets/*.md; do
+    [ -f "$ticket_file" ] || continue
+    [ "$(basename "$ticket_file")" = "README.md" ] && continue
+    child_id="$(basename "$ticket_file" .md)"
+    [ "$child_id" = "$id" ] && continue
+    child_parent="$(ticket_parent_id "$child_id" || true)"
+    [ "$child_parent" = "$id" ] || continue
+    if [ -n "$child_ids" ]; then
+      child_ids="$child_ids,$child_id"
+    else
+      child_ids="$child_id"
+    fi
+  done
+  printf '%s' "$child_ids"
+}
+
+ticket_first_child_id() {
+  local child_ids="${1:-}" first_child
+  first_child="${child_ids%%,*}"
+  [ -n "$first_child" ] || return 0
+  printf '%s' "$first_child"
+}
+
+slugify() {
+  printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//'
+}
+
+default_work_dir() {
+  local id="$1" title slug
+  title="$(ticket_title "$id")"
+  title="$(printf '%s' "$title" | sed -E "s/^${id}[[:space:]:_-]+//")"
+  slug="$(slugify "${title:-ticket-work}")"
+  printf '%s/docs/work/%s-%s' "$REPO_ROOT" "$id" "${slug:-ticket-work}"
+}
+
+ensure_work_dir() {
+  local id="$1" work_dir
+  work_dir="$(work_dir_for_ticket "$id" || true)"
+  if [ -n "$work_dir" ]; then
+    printf '%s' "$work_dir"
+    return 0
+  fi
+  work_dir="$(default_work_dir "$id")"
+  mkdir -p "$work_dir"
+  printf '%s' "$work_dir"
+}
+
+matrix_rows_tsv() {
+  local matrix_file="$REPO_ROOT/docs/TEST_MATRIX.md"
+  [ -f "$matrix_file" ] || return 0
+  awk -F'|' '
+    /^\|/ {
+      if ($2 ~ /^[[:space:]]*Work Item[[:space:]]*$/) next
+      if ($2 ~ /^[[:space:]]*---/) next
+      if (NF < 10) next
+      for (i=2; i<=10; i++) {
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", $i)
+      }
+      print $2 "\t" $3 "\t" $4 "\t" $5 "\t" $6 "\t" $7 "\t" $8 "\t" $9 "\t" $10
+    }' "$matrix_file"
+}
+
+print_matrix_query() {
+  local rows
+  rows="$(matrix_rows_tsv)"
+  if [ -z "$rows" ]; then
+    printf 'No matrix rows found in docs/TEST_MATRIX.md\n'
+    return 0
+  fi
+  printf '%s\n' "$rows" | awk -F'\t' '
+    BEGIN {
+      fmt="%-16s %-48s %-6s %-11s %-6s %-6s %-10s %-14s %s\n"
+      printf fmt, "WORK_ITEM", "CONTRACT", "UNIT", "INTEGRATION", "E2E", "UAT", "PLATFORM", "STATUS", "EVIDENCE"
+    }
+    {
+      printf fmt, $1, $2, $3, $4, $5, $6, $7, $8, $9
+    }'
+}
+
+extract_status_line() {
+  local path="$1"
+  [ -f "$path" ] || return 0
+  sed -n -E 's/^- Status:[[:space:]]*`?([^`[:space:]]+)`?.*$/\1/p' "$path" | head -n 1
+}
+
+extract_ticket_id_line() {
+  local path="$1"
+  [ -f "$path" ] || return 0
+  sed -n -E 's/^- ID:[[:space:]]*`?([^`[:space:]]*)`?.*$/\1/p' "$path" | head -n 1
+}
+
+status_rank() {
+  case "$1" in
+    blocked) printf '0' ;;
+    ticket_loaded) printf '1' ;;
+    analysis_complete) printf '2' ;;
+    proposal_pending_approval) printf '3' ;;
+    proposal_approved) printf '4' ;;
+    decomposed) printf '5' ;;
+    plan_pending_approval) printf '6' ;;
+    plan_approved) printf '7' ;;
+    implementation_complete) printf '8' ;;
+    code_review_approved) printf '9' ;;
+    uat_generated) printf '10' ;;
+    *) printf '0' ;;
+  esac
+}
+
+ticket_status_at_least() {
+  [ "$(status_rank "$1")" -ge "$(status_rank "$2")" ]
+}
+
+ticket_gate_passes() {
+  local gate="$1" status="$2"
+  case "$gate:$status" in
+    proposal:proposal_approved|proposal:plan_pending_approval|proposal:plan_approved|proposal:implementation_complete|proposal:code_review_approved|proposal:uat_generated) return 0 ;;
+    plan:plan_approved|plan:implementation_complete|plan:code_review_approved|plan:uat_generated) return 0 ;;
+    code_review:code_review_approved|code_review:uat_generated) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+status_for_gate_timestamp() {
+  case "$1" in
+    proposal_approved|plan_pending_approval|plan_approved|implementation_complete|code_review_approved|uat_generated) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+status_for_plan_timestamp() {
+  case "$1" in
+    plan_approved|implementation_complete|code_review_approved|uat_generated) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+status_for_code_review_timestamp() {
+  case "$1" in
+    code_review_approved|uat_generated) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+template_path_for_phase() {
+  case "$1" in
+    analysis) printf '%s/docs/templates/ticket-work/analysis.md' "$REPO_ROOT" ;;
+    proposal) printf '%s/docs/templates/ticket-work/proposal.md' "$REPO_ROOT" ;;
+    implementation_plan) printf '%s/docs/templates/ticket-work/implementation-plan.md' "$REPO_ROOT" ;;
+    validation) printf '%s/docs/templates/ticket-work/validation.md' "$REPO_ROOT" ;;
+    uat) printf '%s/docs/templates/ticket-work/uat.md' "$REPO_ROOT" ;;
+    *) return 1 ;;
+  esac
+}
+
+file_name_for_phase() {
+  case "$1" in
+    analysis) printf 'analysis.md' ;;
+    proposal) printf 'proposal.md' ;;
+    implementation_plan) printf 'implementation-plan.md' ;;
+    validation) printf 'validation.md' ;;
+    uat) printf 'uat.md' ;;
+    *) return 1 ;;
+  esac
+}
+
+replace_ticket_id_placeholder() {
+  local path="$1" id="$2"
+  perl -0pi -e 's/- ID:[^\n]*/- ID: '"$id"'/g' "$path"
+}
+
+work_dir_from_status_or_default() {
+  local id="$1" work_dir
+  work_dir="$(work_dir_for_ticket "$id" || true)"
+  [ -n "$work_dir" ] || work_dir="$(default_work_dir "$id")"
+  printf '%s' "$work_dir"
+}
+
+ticket_status_from_files() {
+  local ticket_id="$1" work_dir="$2" status="ticket_loaded" status_line="" role="" child_ids=""
+  [ -n "$work_dir" ] || { printf '%s' "$status"; return 0; }
+
+  [ -f "$work_dir/analysis.md" ] && status="analysis_complete"
+  [ -f "$work_dir/proposal.md" ] && status="proposal_pending_approval"
+  status_line="$(extract_status_line "$work_dir/proposal.md")"
+  case "$status_line" in
+    proposal_approved) status="proposal_approved" ;;
+  esac
+
+  [ -f "$work_dir/implementation-plan.md" ] && status="plan_pending_approval"
+  if [ -f "$work_dir/implementation-plan.md" ]; then
+    status_line="$(extract_status_line "$work_dir/implementation-plan.md")"
+    case "$status_line" in
+      plan_pending_approval|plan_approved|implementation_complete|code_review_approved|uat_generated)
+        status="$status_line"
+      ;;
+    esac
+  fi
+
+  role="$(ticket_role "$ticket_id")"
+  child_ids="$(ticket_child_ids "$ticket_id")"
+  if [ "$role" = "parent" ] && [ -n "$child_ids" ] && [ -f "$work_dir/proposal.md" ]; then
+    status="decomposed"
+  fi
+  printf '%s' "$status"
+}
+
+ticket_file_exists() {
+  [ -f "$REPO_ROOT/docs/tickets/$1.md" ]
+}
+
+require_ticket_exists() {
+  ticket_file_exists "$1" || die "ticket '$1' missing docs/tickets/$1.md"
+}
+
+ticket_row_status() {
+  sql "SELECT status FROM ticket_workflow WHERE ticket_id=$(sql_literal "$1");"
+}
+
+ticket_effective_status() {
+  local id="$1" status role child_ids work_dir
+  status="$(ticket_row_status "$id")"
+  [ -n "$status" ] || return 0
+  role="$(ticket_role "$id")"
+  child_ids="$(ticket_child_ids "$id")"
+  work_dir="$(work_dir_for_ticket "$id" || true)"
+  if [ "$role" = "parent" ] && [ -n "$child_ids" ] && [ "$status" != "blocked" ] && {
+    [ "$status" = "decomposed" ] || [ -f "$work_dir/proposal.md" ];
+  }; then
+    printf 'decomposed'
+    return 0
+  fi
+  printf '%s' "$status"
+}
+
+ticket_approval_fields() {
+  sql "SELECT proposal_approved_at || '|' || plan_approved_at || '|' || code_review_approved_at FROM ticket_workflow WHERE ticket_id=$(sql_literal "$1");"
+}
+
+sync_ticket_work_status_files() {
+  local ticket_id="$1" ticket_status="$2" work_dir proposal_path plan_path proposal_status=""
+  work_dir="$(work_dir_for_ticket "$ticket_id" || true)"
+  [ -n "$work_dir" ] || return 0
+
+  proposal_path="$work_dir/proposal.md"
+  plan_path="$work_dir/implementation-plan.md"
+
+  case "$ticket_status" in
+    proposal_pending_approval) proposal_status="proposal_pending_approval" ;;
+    decomposed) proposal_status="decomposed" ;;
+    proposal_approved|plan_pending_approval|plan_approved|implementation_complete|code_review_approved|uat_generated)
+      proposal_status="proposal_approved"
+      ;;
+  esac
+
+  if [ -n "$proposal_status" ] && [ -f "$proposal_path" ]; then
+    perl -0pi -e 's/^- Status: .*$/- Status: `'"$proposal_status"'`/m' "$proposal_path"
+  fi
+
+  case "$ticket_status" in
+    plan_pending_approval|plan_approved|implementation_complete|code_review_approved|uat_generated)
+      if [ -f "$plan_path" ]; then
+        perl -0pi -e 's/^- Status: .*$/- Status: `'"$ticket_status"'`/m' "$plan_path"
+      fi
+      ;;
+  esac
+}
+
+apply_schema_file() {
+  local file="$1" version="$2"
+  local applied
+  applied="$(sql "SELECT version FROM schema_version WHERE version=$version;" 2>/dev/null || true)"
+  [ -n "$applied" ] && return 0
+  if [ "$version" = "2" ]; then
+    local has_ticket_role has_parent_ticket_id
+    has_ticket_role="$(sql "SELECT 1 FROM pragma_table_info('ticket_workflow') WHERE name='ticket_role' LIMIT 1;" 2>/dev/null || true)"
+    has_parent_ticket_id="$(sql "SELECT 1 FROM pragma_table_info('ticket_workflow') WHERE name='parent_ticket_id' LIMIT 1;" 2>/dev/null || true)"
+    if [ -n "$has_ticket_role" ] && [ -n "$has_parent_ticket_id" ]; then
+      sql "INSERT OR IGNORE INTO schema_version (version) VALUES ($version);"
+      return 0
+    fi
+  fi
+  sql_file "$file"
+  sql "INSERT OR IGNORE INTO schema_version (version) VALUES ($version);"
+}
+
+cmd_init() {
+  if [ -f "$DB_PATH" ]; then
+    info "Database already exists at $DB_PATH"
+    return 0
+  fi
+  mkdir -p "$(dirname "$DB_PATH")"
+  sqlite3 "$DB_PATH" '.databases' >/dev/null
+  apply_schema_file "$SCHEMA_DIR/001-init.sql" 1
+  info "Initialized database at $DB_PATH"
+}
+
+cmd_migrate() {
+  cmd_init
+  local file version
+  for file in "$SCHEMA_DIR"/*.sql; do
+    [ -f "$file" ] || continue
+    version="$(basename "$file" | sed -E 's/^0*([0-9]+).*/\1/')"
+    apply_schema_file "$file" "$version"
+  done
+  info "Migrations applied."
+}
+
+verify_ticket_internal() {
+  local id="$1" status stored_status ticket_path work_dir issues=0 proposal_status="" expected_proposal_status="" plan_status=""
+  local proposal_id="" analysis_id="" plan_id="" validation_id="" uat_id=""
+  local proposal_approved_at="" plan_approved_at="" code_review_approved_at=""
+  local validation_path="" uat_path="" commands_placeholder="" results_placeholder="" proof_placeholder=""
+  local role="" parent_id="" child_ids=""
+
+  stored_status="$(ticket_row_status "$id")"
+  [ -n "$stored_status" ] || { echo "missing ticket_workflow row for $id"; return 1; }
+  status="$(ticket_effective_status "$id")"
+  ticket_path="$REPO_ROOT/docs/tickets/$id.md"
+  [ -f "$ticket_path" ] || { echo "missing ticket file $ticket_path"; return 1; }
+  work_dir="$(work_dir_for_ticket "$id" || true)"
+  role="$(ticket_role "$id")"
+  parent_id="$(ticket_parent_id "$id" || true)"
+  child_ids="$(ticket_child_ids "$id")"
+
+  if [ "$stored_status" != "$status" ] && [ "$status" = "decomposed" ]; then
+    echo "ticket_workflow status '$stored_status' should be 'decomposed'"
+    issues=1
+  fi
+
+  case "$role" in
+    child)
+      [ -n "$parent_id" ] || { echo "child ticket missing parent ticket metadata"; issues=1; }
+      ticket_file_exists "$parent_id" || { echo "child ticket parent '$parent_id' is missing"; issues=1; }
+      ;;
+    parent)
+      if [ -n "$parent_id" ]; then
+        echo "parent ticket should not declare a parent ticket id"
+        issues=1
+      fi
+      if [ -n "$child_ids" ] && [ "$status" != "decomposed" ]; then
+        echo "parent ticket with child tickets should be decomposed"
+        issues=1
+      fi
+      ;;
+  esac
+
+  if ticket_status_at_least "$status" "analysis_complete" && [ -z "$work_dir" ]; then
+    echo "missing work packet under docs/work/${id}-*"
+    return 1
+  fi
+
+  IFS='|' read -r proposal_approved_at plan_approved_at code_review_approved_at <<< "$(ticket_approval_fields "$id")"
+
+  if [ "$status" = "decomposed" ]; then
+    :
+  elif status_for_gate_timestamp "$status"; then
+    [ -n "${proposal_approved_at:-}" ] || { echo "proposal approval timestamp missing for status $status"; issues=1; }
+  elif [ -n "${proposal_approved_at:-}" ]; then
+    echo "proposal approval timestamp present before proposal approval"
+    issues=1
+  fi
+
+  if status_for_plan_timestamp "$status"; then
+    [ -n "${plan_approved_at:-}" ] || { echo "plan approval timestamp missing for status $status"; issues=1; }
+  elif [ -n "${plan_approved_at:-}" ]; then
+    echo "plan approval timestamp present before plan approval"
+    issues=1
+  fi
+
+  if status_for_code_review_timestamp "$status"; then
+    [ -n "${code_review_approved_at:-}" ] || { echo "code review approval timestamp missing for status $status"; issues=1; }
+  elif [ -n "${code_review_approved_at:-}" ]; then
+    echo "code review approval timestamp present before code review approval"
+    issues=1
+  fi
+
+  if [ -n "$work_dir" ]; then
+    if ticket_status_at_least "$status" "analysis_complete" && [ ! -f "$work_dir/analysis.md" ]; then
+      echo "missing analysis.md in $(basename "$work_dir")"
+      issues=1
+    fi
+    if ticket_status_at_least "$status" "proposal_pending_approval" && [ ! -f "$work_dir/proposal.md" ]; then
+      echo "missing proposal.md in $(basename "$work_dir")"
+      issues=1
+    fi
+    if ticket_status_at_least "$status" "plan_pending_approval" && [ ! -f "$work_dir/implementation-plan.md" ]; then
+      echo "missing implementation-plan.md in $(basename "$work_dir")"
+      issues=1
+    fi
+    if ticket_status_at_least "$status" "implementation_complete" && [ ! -f "$work_dir/validation.md" ]; then
+      echo "missing validation.md in $(basename "$work_dir")"
+      issues=1
+    fi
+    if [ "$status" = "uat_generated" ] && [ ! -f "$work_dir/uat.md" ]; then
+      echo "missing uat.md for ticket status $status"
+      issues=1
+    fi
+
+    if [ -f "$work_dir/analysis.md" ]; then
+      analysis_id="$(extract_ticket_id_line "$work_dir/analysis.md")"
+      if [ -z "$analysis_id" ] || [ "$analysis_id" != "$id" ]; then
+        echo "analysis.md ticket id '${analysis_id:-<empty>}' should be '$id'"
+        issues=1
+      fi
+    fi
+
+    if [ -f "$work_dir/proposal.md" ]; then
+      proposal_id="$(extract_ticket_id_line "$work_dir/proposal.md")"
+      if [ -z "$proposal_id" ] || [ "$proposal_id" != "$id" ]; then
+        echo "proposal.md ticket id '${proposal_id:-<empty>}' should be '$id'"
+        issues=1
+      fi
+
+      proposal_status="$(extract_status_line "$work_dir/proposal.md")"
+      case "$status" in
+        proposal_pending_approval) expected_proposal_status="proposal_pending_approval" ;;
+        decomposed) expected_proposal_status="decomposed" ;;
+        proposal_approved|plan_pending_approval|plan_approved|implementation_complete|code_review_approved|uat_generated)
+          expected_proposal_status="proposal_approved"
+          ;;
+        *) expected_proposal_status="" ;;
+      esac
+      if [ -n "$expected_proposal_status" ] && [ "$proposal_status" != "$expected_proposal_status" ]; then
+        echo "proposal.md status '$proposal_status' should be '$expected_proposal_status'"
+        issues=1
+      fi
+    fi
+
+    if [ -f "$work_dir/implementation-plan.md" ]; then
+      plan_id="$(extract_ticket_id_line "$work_dir/implementation-plan.md")"
+      if [ -z "$plan_id" ] || [ "$plan_id" != "$id" ]; then
+        echo "implementation-plan.md ticket id '${plan_id:-<empty>}' should be '$id'"
+        issues=1
+      fi
+
+      if [ "$status" = "decomposed" ]; then
+        echo "decomposed parent ticket should not have implementation-plan.md"
+        issues=1
+      fi
+
+      if ticket_status_at_least "$status" "plan_pending_approval"; then
+        plan_status="$(extract_status_line "$work_dir/implementation-plan.md")"
+        if [ "$plan_status" != "$status" ]; then
+          echo "implementation-plan.md status '$plan_status' should be '$status'"
+          issues=1
+        fi
+      fi
+    fi
+
+    validation_path="$work_dir/validation.md"
+    if [ -f "$validation_path" ]; then
+      if [ "$status" = "decomposed" ]; then
+        echo "decomposed parent ticket should not have validation.md"
+        issues=1
+      fi
+      validation_id="$(extract_ticket_id_line "$validation_path")"
+      if [ -z "$validation_id" ] || [ "$validation_id" != "$id" ]; then
+        echo "validation.md ticket id '${validation_id:-<empty>}' should be '$id'"
+        issues=1
+      fi
+
+      commands_placeholder="$(awk '
+        /^## Commands Run/ {in_section=1; next}
+        /^## / && in_section {exit}
+        in_section {print}
+      ' "$validation_path" | tr -d "\r")"
+      if printf '%s\n' "$commands_placeholder" | grep -Eq '^[[:space:]]*command[[:space:]]*$'; then
+        echo "validation.md still contains placeholder command text"
+        issues=1
+      fi
+
+      results_placeholder="$(grep -Ec '^- (Check|Result):[[:space:]]*$' "$validation_path" || true)"
+      if [ "$results_placeholder" -gt 0 ]; then
+        echo "validation.md has empty result placeholders"
+        issues=1
+      fi
+
+      proof_placeholder="$(grep -Ec '^- (Unit|Integration|E2E|UAT|Platform):[[:space:]]*$' "$validation_path" || true)"
+      if ticket_status_at_least "$status" "implementation_complete" && [ "$proof_placeholder" -gt 0 ]; then
+        echo "validation.md has empty proof update placeholders"
+        issues=1
+      fi
+    fi
+
+    uat_path="$work_dir/uat.md"
+    if [ -f "$uat_path" ]; then
+      if [ "$status" = "decomposed" ]; then
+        echo "decomposed parent ticket should not have uat.md"
+        issues=1
+      fi
+      uat_id="$(extract_ticket_id_line "$uat_path")"
+      if [ -z "$uat_id" ] || [ "$uat_id" != "$id" ]; then
+        echo "uat.md ticket id '${uat_id:-<empty>}' should be '$id'"
+        issues=1
+      fi
+      if grep -Eq '^1\. Scenario\.$' "$uat_path"; then
+        echo "uat.md still contains placeholder acceptance scenario"
+        issues=1
+      fi
+    fi
+  fi
+  return $issues
+}
+
+required_state_for_status() {
+  local target_status="$1" lane="$2"
+  case "$target_status" in
+    proposal_pending_approval)
+      case "$lane" in
+        tiny|normal_fast) printf 'ticket_loaded|analysis_complete' ;;
+        *) printf 'analysis_complete' ;;
+      esac
+      ;;
+    decomposed) printf 'proposal_pending_approval|proposal_approved' ;;
+    plan_pending_approval) printf 'proposal_approved' ;;
+    implementation_complete) printf 'plan_approved' ;;
+    uat_generated) printf 'code_review_approved' ;;
+    blocked) printf 'any' ;;
+    *) printf '' ;;
+  esac
+}
+
+status_requires_artifact() {
+  case "$1" in
+    proposal_pending_approval) printf 'proposal.md' ;;
+    decomposed) printf 'proposal.md' ;;
+    plan_pending_approval) printf 'implementation-plan.md' ;;
+    implementation_complete) printf 'validation.md' ;;
+    uat_generated) printf 'uat.md' ;;
+    *) printf '' ;;
+  esac
+}
+
+enforce_status_transition() {
+  local id="$1" current="$2" next="$3" work_dir="$4" lane="$5" required_current required_file proposal_status plan_status role child_ids
+  case "$next" in
+    proposal_pending_approval|decomposed|plan_pending_approval|implementation_complete|uat_generated|blocked) ;;
+    *) die "ticket update only supports proposal_pending_approval, decomposed, plan_pending_approval, implementation_complete, uat_generated, or blocked. Use ticket approve or ticket repair for other transitions." ;;
+  esac
+
+  if [ "$current" = "$next" ]; then
+    return 0
+  fi
+
+  if [ "$next" = "blocked" ]; then
+    return 0
+  fi
+
+  required_current="$(required_state_for_status "$next" "$lane")"
+  if [ "$required_current" != "any" ]; then
+    case "$required_current" in
+      *'|'*)
+        case "|$required_current|" in
+          *"|$current|"*) ;;
+          *) die "ticket update: illegal transition from $current to $next for lane $lane" ;;
+        esac
+        ;;
+      *)
+        [ "$current" = "$required_current" ] || die "ticket update: illegal transition from $current to $next for lane $lane"
+        ;;
+    esac
+  fi
+
+  required_file="$(status_requires_artifact "$next")"
+  [ -n "$required_file" ] || die "ticket update: no artifact rule for $next"
+  [ -n "$work_dir" ] || die "ticket update: missing work packet under docs/work/${id}-*"
+  [ -f "$work_dir/$required_file" ] || die "ticket update: missing required artifact $required_file for $next"
+
+  role="$(ticket_role "$id")"
+  child_ids="$(ticket_child_ids "$id")"
+
+  case "$next" in
+    proposal_pending_approval)
+      proposal_status="$(extract_status_line "$work_dir/proposal.md")"
+      [ "$(extract_ticket_id_line "$work_dir/proposal.md")" = "$id" ] || die "ticket update: proposal.md ticket id must be $id"
+      [ "$proposal_status" = "proposal_pending_approval" ] || die "ticket update: proposal.md status must be proposal_pending_approval before status update"
+      ;;
+    decomposed)
+      [ "$role" = "parent" ] || die "ticket update: decomposed status requires Relationship: parent in docs/tickets/$id.md"
+      [ -n "$child_ids" ] || die "ticket update: decomposed status requires at least one child ticket"
+      [ "$(extract_ticket_id_line "$work_dir/proposal.md")" = "$id" ] || die "ticket update: proposal.md ticket id must be $id"
+      ;;
+    plan_pending_approval)
+      [ "$role" != "parent" ] || die "ticket update: parent tickets cannot move to plan_pending_approval"
+      plan_status="$(extract_status_line "$work_dir/implementation-plan.md")"
+      [ "$(extract_ticket_id_line "$work_dir/implementation-plan.md")" = "$id" ] || die "ticket update: implementation-plan.md ticket id must be $id"
+      [ "$plan_status" = "plan_pending_approval" ] || die "ticket update: implementation-plan.md status must be plan_pending_approval before status update"
+      ;;
+    implementation_complete)
+      [ "$role" != "parent" ] || die "ticket update: parent tickets cannot move to implementation_complete"
+      [ "$(extract_ticket_id_line "$work_dir/validation.md")" = "$id" ] || die "ticket update: validation.md ticket id must be $id"
+      ;;
+    uat_generated)
+      [ "$role" != "parent" ] || die "ticket update: parent tickets cannot move to uat_generated"
+      [ "$(extract_ticket_id_line "$work_dir/uat.md")" = "$id" ] || die "ticket update: uat.md ticket id must be $id"
+      ;;
+  esac
+}
+
+ticket_next_phase() {
+  local status="$1" lane="$2"
+  case "$status" in
+    ticket_loaded)
+      case "$lane" in
+        tiny|normal_fast) printf 'proposal' ;;
+        *) printf 'analysis' ;;
+      esac
+      ;;
+    analysis_complete) printf 'proposal' ;;
+    proposal_pending_approval) printf 'approval:proposal' ;;
+    proposal_approved) printf 'implementation-plan' ;;
+    decomposed) printf 'children' ;;
+    plan_pending_approval) printf 'approval:plan' ;;
+    plan_approved) printf 'implementation' ;;
+    implementation_complete) printf 'review-and-validation' ;;
+    code_review_approved|uat_generated) printf 'done' ;;
+    blocked) printf 'blocked' ;;
+    *) printf 'unknown' ;;
+  esac
+}
+
+ticket_missing_artifacts() {
+  local id="$1" status="$2" work_dir="$3" missing=()
+  if ticket_status_at_least "$status" "analysis_complete" && [ ! -f "$work_dir/analysis.md" ]; then
+    missing+=("analysis.md")
+  fi
+  if ticket_status_at_least "$status" "proposal_pending_approval" && [ ! -f "$work_dir/proposal.md" ]; then
+    missing+=("proposal.md")
+  fi
+  if ticket_status_at_least "$status" "plan_pending_approval" && [ ! -f "$work_dir/implementation-plan.md" ]; then
+    missing+=("implementation-plan.md")
+  fi
+  if ticket_status_at_least "$status" "implementation_complete" && [ ! -f "$work_dir/validation.md" ]; then
+    missing+=("validation.md")
+  fi
+  if [ "$status" = "uat_generated" ] && [ ! -f "$work_dir/uat.md" ]; then
+    missing+=("uat.md")
+  fi
+  printf '%s' "${missing[*]:-none}"
+}
+
+cmd_ticket_next() {
+  local id="$1" status work_dir next_phase blockers missing recommended lane type role parent_id child_ids first_child
+  status="$(ticket_effective_status "$id")"
+  [ -n "$status" ] || die "ticket next: ticket '$id' not found"
+  lane="$(ticket_lane "$id")"
+  type="$(ticket_type "$id")"
+  role="$(ticket_role "$id")"
+  parent_id="$(ticket_parent_id "$id" || true)"
+  child_ids="$(ticket_child_ids "$id")"
+  first_child="$(ticket_first_child_id "$child_ids")"
+  work_dir="$(work_dir_from_status_or_default "$id")"
+  next_phase="$(ticket_next_phase "$status" "$lane")"
+  missing="$(ticket_missing_artifacts "$id" "$status" "$work_dir")"
+  blockers="none"
+  recommended="scripts/harness ticket status --id $id"
+  case "$status" in
+    ticket_loaded)
+      case "$lane" in
+        tiny|normal_fast)
+          recommended="scripts/harness ticket start-phase --id $id --phase proposal"
+          ;;
+        *)
+          recommended="scripts/harness ticket start-phase --id $id --phase analysis"
+          ;;
+      esac
+      ;;
+    analysis_complete)
+      recommended="scripts/harness ticket start-phase --id $id --phase proposal"
+      ;;
+    proposal_pending_approval)
+      blockers="proposal approval required"
+      recommended="scripts/harness ticket gate --id $id --gate proposal"
+      ;;
+    proposal_approved)
+      recommended="scripts/harness ticket start-phase --id $id --phase implementation-plan"
+      ;;
+    decomposed)
+      if [ -n "$first_child" ]; then
+        recommended="scripts/harness ticket next --id $first_child"
+      else
+        blockers="parent ticket has no child tickets"
+        recommended="create child tickets and set their Parent ticket metadata to $id"
+      fi
+      ;;
+    plan_pending_approval)
+      blockers="plan approval required"
+      recommended="scripts/harness ticket gate --id $id --gate plan"
+      ;;
+    plan_approved)
+      blockers="implementation artifact is product code, not a scaffolded template"
+      recommended="implement the approved slice, update validation.md, then run scripts/harness ticket update --id $id --status implementation_complete"
+      ;;
+    implementation_complete)
+      recommended="run review and targeted validation, then use scripts/harness ticket approve --id $id --gate code_review after explicit human approval"
+      ;;
+    code_review_approved)
+      recommended="scripts/harness verify ticket --id $id (optional UAT: scripts/harness ticket start-phase --id $id --phase uat)"
+      ;;
+    uat_generated)
+      recommended="scripts/harness verify ticket --id $id"
+      ;;
+    blocked)
+      blockers="ticket is blocked"
+      recommended="use scripts/harness ticket repair --id $id --status <status> after resolving the blocker"
+      ;;
+  esac
+
+  printf 'ticket_id=%s\n' "$id"
+  printf 'type=%s\n' "$type"
+  printf 'lane=%s\n' "$lane"
+  printf 'role=%s\n' "$role"
+  printf 'parent_ticket=%s\n' "${parent_id:-none}"
+  printf 'child_tickets=%s\n' "${child_ids:-none}"
+  printf 'status=%s\n' "$status"
+  printf 'next_phase=%s\n' "$next_phase"
+  printf 'work_dir=%s\n' "${work_dir#$REPO_ROOT/}"
+  printf 'missing=%s\n' "$missing"
+  printf 'blockers=%s\n' "$blockers"
+  printf 'recommended=%s\n' "$recommended"
+}
+
+cmd_ticket_check_phase() {
+  local id="$1" status work_dir lane type role parent_id child_ids
+  status="$(ticket_effective_status "$id")"
+  [ -n "$status" ] || die "ticket check-phase: ticket '$id' not found"
+  lane="$(ticket_lane "$id")"
+  type="$(ticket_type "$id")"
+  role="$(ticket_role "$id")"
+  parent_id="$(ticket_parent_id "$id" || true)"
+  child_ids="$(ticket_child_ids "$id")"
+  work_dir="$(work_dir_from_status_or_default "$id")"
+  printf 'Ticket %s\n' "$id"
+  printf '  type: %s\n' "$type"
+  printf '  lane: %s\n' "$lane"
+  printf '  role: %s\n' "$role"
+  printf '  parent: %s\n' "${parent_id:-none}"
+  printf '  children: %s\n' "${child_ids:-none}"
+  printf '  status: %s\n' "$status"
+  printf '  next: %s\n' "$(ticket_next_phase "$status" "$lane")"
+  printf '  work packet: %s\n' "${work_dir#$REPO_ROOT/}"
+  printf '  missing: %s\n' "$(ticket_missing_artifacts "$id" "$status" "$work_dir")"
+}
+
+cmd_ticket_start_phase() {
+  local id="$1" phase="$2" normalized_phase work_dir target_path template_path current_status expected_phase
+  normalized_phase="$(normalize_phase "$phase")"
+  current_status="$(ticket_effective_status "$id")"
+  [ -n "$current_status" ] || die "ticket start-phase: ticket '$id' not found"
+  expected_phase="$(ticket_next_phase "$current_status" "$(ticket_lane "$id")")"
+  case "$normalized_phase" in
+    implementation_plan) phase="implementation-plan" ;;
+    *) phase="${normalized_phase//_/-}" ;;
+  esac
+  if [ "$expected_phase" = "review-and-validation" ] && [ "$phase" = "validation" ]; then
+    :
+  elif [ "$expected_phase" = "done" ] && [ "$phase" = "uat" ] && [ "$current_status" = "code_review_approved" ]; then
+    :
+  else
+    [ "$expected_phase" = "$phase" ] || die "ticket start-phase: next legal phase is $expected_phase, not $phase"
+  fi
+  if [ "$phase" = "implementation" ] || [ "$phase" = "review-and-validation" ] || [[ "$phase" == approval:* ]]; then
+    die "ticket start-phase: phase $phase does not scaffold a ticket-work template"
+  fi
+  work_dir="$(ensure_work_dir "$id")"
+  template_path="$(template_path_for_phase "$normalized_phase")"
+  target_path="$work_dir/$(file_name_for_phase "$normalized_phase")"
+  [ ! -e "$target_path" ] || die "ticket start-phase: $target_path already exists"
+  cp "$template_path" "$target_path"
+  replace_ticket_id_placeholder "$target_path" "$id"
+  info "Scaffolded ${target_path#$REPO_ROOT/} for ticket $id."
+}
+
+cmd_ticket() {
+  need_ticket_schema
+  local sub="${1:-}"; shift || true
+  case "$sub" in
+    load)
+      local id="" title ticket_path role parent_id work_dir status
+      while [ $# -gt 0 ]; do
+        case "$1" in
+          --id) id="$2"; shift 2 ;;
+          *) die "ticket load: unknown flag $1" ;;
+        esac
+      done
+      [ -n "$id" ] || die "ticket load: --id is required"
+      ticket_path="$REPO_ROOT/docs/tickets/$id.md"
+      [ -f "$ticket_path" ] || die "ticket load: missing $ticket_path"
+      title="$(ticket_title "$id")"
+      role="$(ticket_role "$id")"
+      parent_id="$(ticket_parent_id "$id" || true)"
+      work_dir="$(work_dir_for_ticket "$id" || true)"
+      status="$(ticket_status_from_files "$id" "$work_dir")"
+      sql "INSERT INTO ticket_workflow (ticket_id, ticket_path, ticket_role, parent_ticket_id, status, notes)
+           VALUES ($(sql_literal "$id"), $(sql_literal "docs/tickets/$id.md"), $(sql_literal "$role"), $(sql_or_null "$parent_id"), $(sql_literal "$status"), 'Loaded from tracked docs')
+           ON CONFLICT(ticket_id) DO UPDATE SET
+             ticket_path=excluded.ticket_path,
+             ticket_role=excluded.ticket_role,
+             parent_ticket_id=excluded.parent_ticket_id,
+             status=excluded.status,
+             updated_at=datetime('now');"
+      info "Ticket $id loaded from docs/tickets/$id.md."
+      ;;
+    status)
+      local id="" status lane type role parent_id child_ids work_dir proposal_approved_at plan_approved_at code_review_approved_at updated_at
+      while [ $# -gt 0 ]; do case "$1" in --id) id="$2"; shift 2 ;; *) die "ticket status: unknown flag $1" ;; esac; done
+      [ -n "$id" ] || die "ticket status: --id is required"
+      status="$(ticket_effective_status "$id")"
+      [ -n "$status" ] || die "ticket status: ticket '$id' not found"
+      lane="$(ticket_lane "$id")"
+      type="$(ticket_type "$id")"
+      role="$(ticket_role "$id")"
+      parent_id="$(ticket_parent_id "$id" || true)"
+      child_ids="$(ticket_child_ids "$id")"
+      work_dir="$(work_dir_from_status_or_default "$id")"
+      IFS='|' read -r proposal_approved_at plan_approved_at code_review_approved_at <<< "$(ticket_approval_fields "$id")"
+      updated_at="$(sql "SELECT updated_at FROM ticket_workflow WHERE ticket_id=$(sql_literal "$id");")"
+      printf 'ticket_id=%s\n' "$id"
+      printf 'type=%s\n' "$type"
+      printf 'lane=%s\n' "$lane"
+      printf 'role=%s\n' "$role"
+      printf 'parent_ticket=%s\n' "${parent_id:-none}"
+      printf 'child_tickets=%s\n' "${child_ids:-none}"
+      printf 'status=%s\n' "$status"
+      printf 'next_phase=%s\n' "$(ticket_next_phase "$status" "$lane")"
+      printf 'work_dir=%s\n' "${work_dir#$REPO_ROOT/}"
+      printf 'proposal_approved_at=%s\n' "${proposal_approved_at:-none}"
+      printf 'plan_approved_at=%s\n' "${plan_approved_at:-none}"
+      printf 'code_review_approved_at=%s\n' "${code_review_approved_at:-none}"
+      printf 'updated_at=%s\n' "${updated_at:-none}"
+      ;;
+    gate)
+      local id="" gate="" current
+      while [ $# -gt 0 ]; do
+        case "$1" in
+          --id) id="$2"; shift 2 ;;
+          --gate) gate="$(normalize_token "$2")"; shift 2 ;;
+          *) die "ticket gate: unknown flag $1" ;;
+        esac
+      done
+      [ -n "$id" ] || die "ticket gate: --id is required"
+      [ -n "$gate" ] || die "ticket gate: --gate is required"
+      current="$(ticket_effective_status "$id")"
+      [ -n "$current" ] || die "ticket gate: ticket '$id' not found"
+      [ "$current" != "decomposed" ] || die "Ticket $id is a decomposed parent ticket. Work should continue on its child tickets."
+      if ticket_gate_passes "$gate" "$current"; then
+        info "PASS: Ticket $id has passed $gate gate (status: $current)."
+      else
+        die "Ticket $id has not passed $gate gate (status: $current). This command is read-only; use ticket approve only after explicit human approval."
+      fi
+      ;;
+    next)
+      local id=""
+      while [ $# -gt 0 ]; do case "$1" in --id) id="$2"; shift 2 ;; *) die "ticket next: unknown flag $1" ;; esac; done
+      [ -n "$id" ] || die "ticket next: --id is required"
+      cmd_ticket_next "$id"
+      ;;
+    check-phase)
+      local id=""
+      while [ $# -gt 0 ]; do case "$1" in --id) id="$2"; shift 2 ;; *) die "ticket check-phase: unknown flag $1" ;; esac; done
+      [ -n "$id" ] || die "ticket check-phase: --id is required"
+      cmd_ticket_check_phase "$id"
+      ;;
+    start-phase)
+      local id="" phase=""
+      while [ $# -gt 0 ]; do
+        case "$1" in
+          --id) id="$2"; shift 2 ;;
+          --phase) phase="$2"; shift 2 ;;
+          *) die "ticket start-phase: unknown flag $1" ;;
+        esac
+      done
+      [ -n "$id" ] || die "ticket start-phase: --id is required"
+      [ -n "$phase" ] || die "ticket start-phase: --phase is required"
+      cmd_ticket_start_phase "$id" "$phase"
+      ;;
+    update)
+      local id="" status="" current="" work_dir=""
+      while [ $# -gt 0 ]; do
+        case "$1" in
+          --id) id="$2"; shift 2 ;;
+          --status) status="$(normalize_ticket_status "$2")"; shift 2 ;;
+          *) die "ticket update: unknown flag $1" ;;
+        esac
+      done
+      [ -n "$id" ] || die "ticket update: --id is required"
+      [ -n "$status" ] || die "ticket update: --status is required"
+      current="$(ticket_row_status "$id")"
+      [ -n "$current" ] || die "ticket update: ticket '$id' not found"
+      work_dir="$(work_dir_for_ticket "$id" || true)"
+      enforce_status_transition "$id" "$current" "$status" "$work_dir" "$(ticket_lane "$id")"
+      sql "UPDATE ticket_workflow SET status=$(sql_literal "$status"), updated_at=datetime('now') WHERE ticket_id=$(sql_literal "$id");"
+      sync_ticket_work_status_files "$id" "$status"
+      info "Ticket $id updated to $status."
+      ;;
+    repair)
+      local id="" status=""
+      while [ $# -gt 0 ]; do
+        case "$1" in
+          --id) id="$2"; shift 2 ;;
+          --status) status="$(normalize_ticket_status "$2")"; shift 2 ;;
+          *) die "ticket repair: unknown flag $1" ;;
+        esac
+      done
+      [ -n "$id" ] || die "ticket repair: --id is required"
+      [ -n "$status" ] || die "ticket repair: --status is required"
+      sql "UPDATE ticket_workflow SET status=$(sql_literal "$status"), updated_at=datetime('now') WHERE ticket_id=$(sql_literal "$id");"
+      sync_ticket_work_status_files "$id" "$status"
+      info "Ticket $id repaired to $status."
+      ;;
+    approve)
+      local id="" gate="" current next
+      while [ $# -gt 0 ]; do
+        case "$1" in
+          --id) id="$2"; shift 2 ;;
+          --gate) gate="$(normalize_token "$2")"; shift 2 ;;
+          *) die "ticket approve: unknown flag $1" ;;
+        esac
+      done
+      [ -n "$id" ] || die "ticket approve: --id is required"
+      [ -n "$gate" ] || die "ticket approve: --gate is required"
+      current="$(ticket_effective_status "$id")"
+      [ -n "$current" ] || die "ticket approve: ticket '$id' not found"
+      [ "$current" != "decomposed" ] || die "ticket approve: decomposed parent tickets do not take proposal, plan, or code review approvals"
+      case "$gate:$current" in
+        proposal:proposal_pending_approval) next="proposal_approved"; sql "UPDATE ticket_workflow SET status='proposal_approved', proposal_approved_at=datetime('now'), updated_at=datetime('now') WHERE ticket_id=$(sql_literal "$id");" ;;
+        plan:plan_pending_approval) next="plan_approved"; sql "UPDATE ticket_workflow SET status='plan_approved', plan_approved_at=datetime('now'), updated_at=datetime('now') WHERE ticket_id=$(sql_literal "$id");" ;;
+        code_review:implementation_complete) next="code_review_approved"; sql "UPDATE ticket_workflow SET status='code_review_approved', code_review_approved_at=datetime('now'), updated_at=datetime('now') WHERE ticket_id=$(sql_literal "$id");" ;;
+        *) die "ticket approve: gate $gate is not valid for status $current" ;;
+      esac
+      sync_ticket_work_status_files "$id" "$next"
+      info "Ticket $id approved for $gate gate and moved to $next."
+      ;;
+    *) die "ticket: expected load, status, gate, next, check-phase, start-phase, update, repair, or approve" ;;
+  esac
+}
+
+import_decisions() {
+  local file id title status
+  [ -d "$REPO_ROOT/docs/decisions" ] || return 0
+  for file in "$REPO_ROOT"/docs/decisions/[0-9][0-9][0-9][0-9]-*.md; do
+    [ -f "$file" ] || continue
+    id="$(basename "$file" .md | cut -d- -f1)"
+    title="$(sed -n '1s/^# //p' "$file")"
+    status="$(awk '/^## Status/{getline; getline; print; exit}' "$file" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z]+//g')"
+    case "$status" in accepted|proposed|superseded|rejected) ;; *) status="proposed" ;; esac
+    sql "INSERT INTO decision (id, title, status, doc_path, notes)
+         VALUES ($(sql_literal "$id"), $(sql_literal "$title"), $(sql_literal "$status"), $(sql_literal "docs/decisions/$(basename "$file")"), 'Imported from docs/decisions.')
+         ON CONFLICT(id) DO UPDATE SET title=excluded.title, status=excluded.status, doc_path=excluded.doc_path;"
+  done
+}
+
+import_tracked_tickets() {
+  local ticket_file id work_dir status proposal_ts_sql plan_ts_sql code_review_ts_sql role parent_id
+  [ -d "$REPO_ROOT/docs/tickets" ] || return 0
+  for ticket_file in "$REPO_ROOT"/docs/tickets/*.md; do
+    [ -f "$ticket_file" ] || continue
+    [ "$(basename "$ticket_file")" = "README.md" ] && continue
+    id="$(basename "$ticket_file" .md)"
+    role="$(ticket_role "$id")"
+    parent_id="$(ticket_parent_id "$id" || true)"
+    work_dir="$(work_dir_for_ticket "$id" || true)"
+    status="$(ticket_status_from_files "$id" "$work_dir")"
+    proposal_ts_sql="NULL"
+    plan_ts_sql="NULL"
+    code_review_ts_sql="NULL"
+    if status_for_gate_timestamp "$status"; then
+      proposal_ts_sql="datetime('now')"
+    fi
+    if status_for_plan_timestamp "$status"; then
+      plan_ts_sql="datetime('now')"
+    fi
+    if status_for_code_review_timestamp "$status"; then
+      code_review_ts_sql="datetime('now')"
+    fi
+    sql "INSERT INTO ticket_workflow (ticket_id, ticket_path, ticket_role, parent_ticket_id, status, proposal_approved_at, plan_approved_at, code_review_approved_at, notes)
+         VALUES ($(sql_literal "$id"), $(sql_literal "docs/tickets/$id.md"), $(sql_literal "$role"), $(sql_or_null "$parent_id"), $(sql_literal "$status"), $proposal_ts_sql, $plan_ts_sql, $code_review_ts_sql, 'Imported from tracked docs by harness import tracked.')
+         ON CONFLICT(ticket_id) DO UPDATE SET
+           ticket_path=excluded.ticket_path,
+           ticket_role=excluded.ticket_role,
+           parent_ticket_id=excluded.parent_ticket_id,
+           status=excluded.status,
+           proposal_approved_at=CASE WHEN $proposal_ts_sql IS NOT NULL THEN COALESCE(ticket_workflow.proposal_approved_at, $proposal_ts_sql) ELSE NULL END,
+           plan_approved_at=CASE WHEN $plan_ts_sql IS NOT NULL THEN COALESCE(ticket_workflow.plan_approved_at, $plan_ts_sql) ELSE NULL END,
+           code_review_approved_at=CASE WHEN $code_review_ts_sql IS NOT NULL THEN COALESCE(ticket_workflow.code_review_approved_at, $code_review_ts_sql) ELSE NULL END,
+           updated_at=datetime('now');"
+  done
+}
+
+cmd_import() {
+  local mode="${1:-}"
+  [ -n "$mode" ] || die "import: expected brownfield or tracked"
+  cmd_migrate >/dev/null
+  import_decisions
+  if [ "$mode" = "tracked" ]; then
+    import_tracked_tickets
+    info "Tracked docs imported."
+  elif [ "$mode" = "brownfield" ]; then
+    info "Brownfield docs imported."
+  else
+    die "import: expected brownfield or tracked"
+  fi
+}
+
+cmd_verify() {
+  local sub="${1:-}"; shift || true
+  [ "$sub" = "ticket" ] || die "verify: expected ticket"
+  need_ticket_schema
+  local id=""
+  while [ $# -gt 0 ]; do case "$1" in --id) id="$2"; shift 2 ;; *) die "verify ticket: unknown flag $1" ;; esac; done
+  [ -n "$id" ] || die "verify ticket: --id is required"
+  if verify_ticket_internal "$id"; then
+    info "PASS: ticket $id is consistent."
+  else
+    die "ticket $id has consistency issues"
+  fi
+}
+
+cmd_doctor() {
+  need_ticket_schema
+  local tickets failures=0
+  tickets="$(sql "SELECT ticket_id FROM ticket_workflow ORDER BY ticket_id;")"
+  if [ -z "$tickets" ]; then
+    info "PASS: Harness doctor found no ticket workflow rows."
+    return 0
+  fi
+  while IFS= read -r id; do
+    [ -n "$id" ] || continue
+    if ! verify_ticket_internal "$id"; then
+      failures=$((failures + 1))
+    fi
+  done <<< "$tickets"
+  [ "$failures" -eq 0 ] || die "Harness doctor found issues in $failures ticket(s)."
+  info "PASS: Harness doctor found no ticket consistency issues."
+}
+
+cmd_export() {
+  need_db
+  printf '# Harness Export\n\n'
+  printf '## Test Matrix\n'
+  print_matrix_query
+  printf '\n## Tickets\n'
+  sql_pretty "SELECT ticket_id, ticket_role, parent_ticket_id, status, ticket_path, updated_at FROM ticket_workflow ORDER BY ticket_id;" 2>/dev/null || true
+  printf '\n## Decisions\n'
+  sql_pretty "SELECT id, status, title FROM decision ORDER BY id;"
+}
+
+cmd_decision() {
+  need_db
+  local sub="${1:-}"; shift || true
+  case "$sub" in
+    add)
+      local id="" title="" status="proposed" doc="" verify="" impact="" notes=""
+      while [ $# -gt 0 ]; do
+        case "$1" in
+          --id) id="$2"; shift 2 ;;
+          --title) title="$2"; shift 2 ;;
+          --status) status="$(normalize_decision_status "$2")"; shift 2 ;;
+          --doc) doc="$2"; shift 2 ;;
+          --verify) verify="$2"; shift 2 ;;
+          --impact) impact="$2"; shift 2 ;;
+          --notes) notes="$2"; shift 2 ;;
+          *) die "decision add: unknown flag $1" ;;
+        esac
+      done
+      [ -n "$id" ] || die "decision add: --id is required"
+      [ -n "$title" ] || die "decision add: --title is required"
+      sql "INSERT INTO decision (id, title, status, doc_path, verify_command, predicted_impact, notes)
+           VALUES ($(sql_literal "$id"), $(sql_literal "$title"), $(sql_literal "$status"), $(sql_or_null "$doc"), $(sql_or_null "$verify"), $(sql_or_null "$impact"), $(sql_or_null "$notes"))
+           ON CONFLICT(id) DO UPDATE SET title=excluded.title, status=excluded.status, doc_path=excluded.doc_path, verify_command=excluded.verify_command, predicted_impact=excluded.predicted_impact, notes=excluded.notes;"
+      info "Decision $id recorded."
+      ;;
+    verify)
+      local id="" cmd result
+      [ $# -eq 1 ] && id="$1"
+      [ -n "$id" ] || die "decision verify: provide a decision id"
+      cmd="$(sql "SELECT verify_command FROM decision WHERE id=$(sql_literal "$id");")"
+      [ -n "$cmd" ] || die "decision $id has no verify_command"
+      if bash -lc "$cmd"; then result="pass"; else result="fail"; fi
+      sql "UPDATE decision SET last_verified_at=datetime('now'), last_verified_result=$(sql_literal "$result") WHERE id=$(sql_literal "$id");"
+      info "Decision $id verification result: $result"
+      ;;
+    *) die "decision: expected add or verify" ;;
+  esac
+}
+
+cmd_trace() {
+  need_db
+  local task_summary="" ticket_id="" agent="" outcome="" duration="" tokens="" actions="" read="" changed="" decisions="" errors="" friction="" notes=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --summary) task_summary="$2"; shift 2 ;;
+      --ticket) ticket_id="$2"; shift 2 ;;
+      --agent) agent="$2"; shift 2 ;;
+      --outcome) outcome="$2"; shift 2 ;;
+      --duration) duration="$2"; shift 2 ;;
+      --tokens) tokens="$2"; shift 2 ;;
+      --actions) actions="$2"; shift 2 ;;
+      --read) read="$2"; shift 2 ;;
+      --changed) changed="$2"; shift 2 ;;
+      --decisions) decisions="$2"; shift 2 ;;
+      --errors) errors="$2"; shift 2 ;;
+      --friction) friction="$(normalize_friction "$2")"; shift 2 ;;
+      --notes) notes="$2"; shift 2 ;;
+      *) die "trace: unknown flag $1" ;;
+    esac
+  done
+  [ -n "$task_summary" ] || die "trace: --summary is required"
+  [ -n "$outcome" ] || die "trace: --outcome is required"
+  if [ -n "$ticket_id" ]; then
+    sql "SELECT ticket_id FROM ticket_workflow WHERE ticket_id=$(sql_literal "$ticket_id");" >/dev/null \
+      || die "trace: ticket lookup failed"
+    [ -n "$(sql "SELECT ticket_id FROM ticket_workflow WHERE ticket_id=$(sql_literal "$ticket_id");")" ] \
+      || die "trace: ticket '$ticket_id' not found"
+  fi
+  sql "INSERT INTO trace (
+         task_summary, ticket_id, agent, actions_taken, files_read,
+         files_changed, decisions_made, errors, outcome, duration_seconds,
+         token_estimate, harness_friction, notes
+       ) VALUES (
+         $(sql_literal "$task_summary"),
+         $(sql_or_null "$ticket_id"),
+         $(sql_or_null "$agent"),
+         $(json_sql_value "$actions"),
+         $(json_sql_value "$read"),
+         $(json_sql_value "$changed"),
+         $(json_sql_value "$decisions"),
+         $(json_sql_value "$errors"),
+         $(sql_literal "$outcome"),
+         $(sql_or_null "$duration"),
+         $(sql_or_null "$tokens"),
+         $(sql_or_null "$friction"),
+         $(sql_or_null "$notes")
+       );"
+  info "Trace recorded."
+}
+
+cmd_query() {
+  local view="${1:-}"
+  case "$view" in
+    tickets|decisions|traces|friction|stats|sql) need_db ;;
+  esac
+  case "$view" in
+    matrix) print_matrix_query ;;
+    tickets) sql_pretty "SELECT ticket_id, ticket_role, parent_ticket_id, status, ticket_path, proposal_approved_at, plan_approved_at, code_review_approved_at, updated_at FROM ticket_workflow ORDER BY ticket_id;" ;;
+    decisions) sql_pretty "SELECT id, status, title, doc_path, last_verified_result FROM decision ORDER BY id;" ;;
+    traces) sql_pretty "SELECT id, created_at, task_summary, outcome, ticket_id, harness_friction FROM trace ORDER BY id DESC LIMIT 20;" ;;
+    friction) sql_pretty "SELECT id, created_at, task_summary, harness_friction FROM trace WHERE harness_friction IS NOT NULL AND harness_friction NOT IN ('', 'none') ORDER BY id DESC LIMIT 20;" ;;
+    stats)
+      local matrix_rows tickets decisions traces
+      matrix_rows="$(matrix_rows_tsv | wc -l | tr -d ' ')"
+      tickets="$(sql "SELECT COUNT(*) FROM ticket_workflow;")"
+      decisions="$(sql "SELECT COUNT(*) FROM decision;")"
+      traces="$(sql "SELECT COUNT(*) FROM trace;")"
+      printf '%-12s %-8s %-10s %-6s\n' MATRIX_ROWS TICKETS DECISIONS TRACES
+      printf '%-12s %-8s %-10s %-6s\n' "$matrix_rows" "$tickets" "$decisions" "$traces"
+      ;;
+    sql) shift; sql_pretty "$*" ;;
+    *) die "query: expected matrix, tickets, decisions, traces, friction, stats, or sql" ;;
+  esac
+}
+
+cmd="${1:-}"
+[ -n "$cmd" ] || { usage; exit 1; }
+shift || true
+
+case "$cmd" in
+  help|-h|--help) usage ;;
+  init) cmd_init "$@" ;;
+  migrate) cmd_migrate "$@" ;;
+  import) cmd_import "$@" ;;
+  ticket) cmd_ticket "$@" ;;
+  verify) cmd_verify "$@" ;;
+  doctor) cmd_doctor "$@" ;;
+  export) cmd_export "$@" ;;
+  decision) cmd_decision "$@" ;;
+  trace) cmd_trace "$@" ;;
+  query) cmd_query "$@" ;;
+  *) usage; exit 1 ;;
+esac
