@@ -9,4 +9,4 @@ This file maps the major Harness surfaces to their responsibilities.
 | Work records | `docs/tickets/*`, `docs/work/*`, `docs/decisions/*` | Stores requirements, work packets, validation evidence, and durable decisions. |
 | Durable layer | `scripts/harness`, `scripts/schema/*`, `harness.db` | Stores and queries operational state as a local cache. |
 | Adapters | `docs/HARNESS_SKILLS.md`, `.codex/skills/*`, `.codex/agents/*`, `docs/agent-adapters/README.md` | Maps the portable workflow onto specific agent tooling. |
-| Observability | `docs/TRACE_SPEC.md`, trace records, decisions, and work packets | Preserves execution evidence and friction for later improvement. |
+| Observability | decisions, work packets, validation evidence, and current Harness docs | Preserves execution evidence and process gaps for later improvement. |

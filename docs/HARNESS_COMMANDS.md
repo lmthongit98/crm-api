@@ -30,8 +30,7 @@ Top-level commands:
 - `doctor`
 - `export`
 - `decision add|verify`
-- `trace`
-- `query tickets|decisions|traces|friction|stats|sql`
+- `query tickets|decisions|stats|sql`
 
 ## Runtime State
 
@@ -41,7 +40,6 @@ Top-level commands:
   - `schema_version`
   - `ticket_workflow`
   - `decision`
-  - `trace`
 
 ## Lifecycle Commands
 
@@ -315,37 +313,6 @@ Requirements:
 - the decision exists
 - it has a `verify_command`
 
-## Trace Command
-
-### `scripts/harness trace ...`
-
-Records an execution trace row in the local DB.
-
-Required flags:
-
-- `--summary <text>`
-- `--outcome <value>`
-
-Optional flags:
-
-- `--ticket <ticket-id>`
-- `--agent <name>`
-- `--duration <seconds>`
-- `--tokens <count>`
-- `--actions <comma-separated values>`
-- `--read <comma-separated values>`
-- `--changed <comma-separated values>`
-- `--decisions <comma-separated values>`
-- `--errors <comma-separated values>`
-- `--friction <none|missing-context|weak-proof|unclear-template|command-ux|policy-runtime-mismatch>`
-- `--notes <text>`
-
-Behavior:
-
-- stores list-like fields as JSON arrays
-- validates `--ticket` if provided
-- normalizes the allowed `--friction` values
-
 ## Query Commands
 
 ### `scripts/harness query tickets`
@@ -356,21 +323,12 @@ Prints the `ticket_workflow` table.
 
 Prints the `decision` table.
 
-### `scripts/harness query traces`
-
-Prints the 20 most recent trace rows.
-
-### `scripts/harness query friction`
-
-Prints the 20 most recent trace rows with a non-empty friction category.
-
 ### `scripts/harness query stats`
 
 Prints counts for:
 
 - tickets
 - decisions
-- traces
 
 ### `scripts/harness query sql <sql...>`
 

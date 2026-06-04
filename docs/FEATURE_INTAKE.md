@@ -62,7 +62,7 @@ expectations.
 | Change request | Changing, fixing, or refining accepted behavior | Work packet or direct patch |
 | New initiative | Adding a larger product area that needs multiple tickets or work packets | Initiative notes plus work packets |
 | Maintenance request | Changing technical, operational, or dependency behavior | Work packet, validation report, or decision |
-| Harness improvement | Improving how humans and agents collaborate | Direct docs update or durable trace evidence |
+| Harness improvement | Improving how humans and agents collaborate | Direct docs update or durable decision and validation evidence |
 
 ## Ticket Metadata
 

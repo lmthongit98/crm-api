@@ -20,7 +20,6 @@ current repository.
 - `REVIEW_WORKFLOW.md`: durable review artifact and code-review gate rules.
 - `ARCHITECTURE.md`: current brownfield architecture and boundary rules.
 - `CONTEXT_RULES.md`: what agents should read by task phase and risk lane.
-- `TRACE_SPEC.md`: expected trace depth after work.
 
 ## Work Records
 

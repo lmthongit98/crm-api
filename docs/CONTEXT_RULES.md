@@ -43,7 +43,7 @@ Read to decide the smallest safe approach and expected proof.
 | `docs/ARCHITECTURE.md` | Skip | Should for code or boundary changes | Must |
 | Relevant decisions | Skip | Should | Must |
 | `docs/HARNESS_MATURITY.md` | Skip | Should for Harness improvements | Must for maturity or process changes |
-| Trace history and current Harness docs | Skip | Should if friction repeats | Must if changing Harness behavior |
+| Current Harness docs and recent validation evidence | Skip | Should if process gaps repeat | Must if changing Harness behavior |
 
 ### Implementation Phase
 
@@ -61,7 +61,7 @@ affect the selected work item.
 | Relevant templates | Skip | Should when adding docs | Must |
 | `docs/ARCHITECTURE.md` | Skip | Should for structural changes | Must |
 | Provider, API, or security docs | Skip | Should if touched | Must |
-| Unrelated docs and historical traces | Skip | Skip | Should only if they affect decisions |
+| Unrelated docs and stale historical artifacts | Skip | Skip | Should only if they affect decisions |
 
 ### Validation Phase
 
@@ -75,18 +75,17 @@ Read to prove the change and avoid claiming unsupported completion.
 | `docs/templates/validation-report.md` | Skip | Should for notable proof | Must for high-risk proof |
 | Relevant commands from README or package docs | Should | Must | Must |
 
-### Trace Phase
+### Handoff Phase
 
 Read to leave useful evidence for the next agent.
 
 | Document Or Source | Tiny | Normal | High-Risk |
 | --- | --- | --- | --- |
-| `docs/TRACE_SPEC.md` | Should | Must | Must |
 | `scripts/harness query tickets` | Should when ticket-driven | Must when ticket-driven | Must when ticket-driven |
-| Trace history or recent friction records | Skip | Should if friction occurred | Must |
 | Changed-file list from `git status --short` | Must | Must | Must |
 | Validation command output | Should | Must | Must |
 | Work packet or progress log | Skip if no packet | Must | Must |
+| Relevant decisions or current Harness docs | Skip | Should if process gaps were found | Must for Harness workflow changes |
 
 ## Retrieval Triggers
 
@@ -100,16 +99,16 @@ Read to leave useful evidence for the next agent.
 | Task introduces or changes workflow skills, specialist agents, or ticket-phase ownership | Read `docs/HARNESS_SKILLS.md`, `docs/AGENT_PROTOCOL.md`, and `docs/HARNESS_COMPONENTS.md` before editing. |
 | Ticket analysis reveals multiple independently reviewable APIs or workflows | Stop before writing one large plan, create child-ticket requirements, keep each child to one API or one domain/data slice with estimated effort under 5 working days, and continue planning on the smaller tickets instead of the parent ticket. |
 | Task changes Harness policy, source hierarchy, risk classification, or validation requirements | Read `docs/AGENT_PROTOCOL.md`, `docs/FEATURE_INTAKE.md`, `docs/ARCHITECTURE.md`, and relevant decisions; pause if direction is ambiguous. |
-| Task discovers repeated confusion, stale docs, or missing proof | Record `harness_friction`, update local Harness docs when appropriate, and capture the gap in trace notes when the fix is out of scope. |
-| Final response is being prepared | Re-read the validation evidence, run `scripts/harness verify ticket --id <ticketId>` for ticket work, check `git status --short`, and read `docs/TRACE_SPEC.md` before recording the final trace. |
+| Task discovers repeated confusion, stale docs, or missing proof | Update local Harness docs when appropriate and capture the gap in the relevant work packet, validation artifact, or decision when the fix is out of scope. |
+| Final response is being prepared | Re-read the validation evidence, run `scripts/harness verify ticket --id <ticketId>` for ticket work, and check `git status --short` before hand-off. |
 
 ## Token Budget Guidance
 
 | Lane | Target Context Budget | Read Shape |
 | --- | --- | --- |
 | Tiny | About 2K tokens | Stable entrypoint docs and the exact file being changed. |
-| Normal | About 5K tokens | Intake docs, relevant product or work docs, architecture when structural, validation expectations, and trace spec at the end. |
-| High-risk | About 10K tokens | Full intake, architecture, relevant decisions, high-risk templates, product docs, validation docs, and trace spec. |
+| Normal | About 5K tokens | Intake docs, relevant product or work docs, architecture when structural, validation expectations, and hand-off evidence at the end. |
+| High-risk | About 10K tokens | Full intake, architecture, relevant decisions, high-risk templates, product docs, validation docs, and hand-off evidence. |
 
 Budget rules:
 

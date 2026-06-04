@@ -67,24 +67,3 @@ CREATE TABLE IF NOT EXISTS decision (
     actual_outcome        TEXT,
     notes                 TEXT
 );
-
-CREATE TABLE IF NOT EXISTS trace (
-    id               INTEGER PRIMARY KEY AUTOINCREMENT,
-    created_at       TEXT    NOT NULL DEFAULT (datetime('now')),
-    task_summary     TEXT    NOT NULL,
-    ticket_id        TEXT    REFERENCES ticket_workflow(ticket_id),
-    agent            TEXT,
-    actions_taken    TEXT,
-    files_read       TEXT,
-    files_changed    TEXT,
-    decisions_made   TEXT,
-    errors           TEXT,
-    outcome          TEXT
-                     CHECK(outcome IN (
-                       'completed','blocked','partial','failed'
-                     )),
-    duration_seconds INTEGER,
-    token_estimate   INTEGER,
-    harness_friction TEXT,
-    notes            TEXT
-);

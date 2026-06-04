@@ -29,7 +29,6 @@ Commands:
   doctor                Verify all ticket workflow slices
   export                Print a durable-state snapshot
   decision add|verify   Add a decision or run its verification
-  trace                 Record an agent execution trace
   query                 Query harness data
 EOF
 }
@@ -93,44 +92,6 @@ normalize_phase() {
     *) die "unknown phase '$1'. Use: analysis, proposal, implementation-plan, review, validation, or uat" ;;
   esac
 }
-normalize_friction() {
-  local value
-  value="$(normalize_token "${1:-}")"
-  case "$value" in
-    ""|none|missing_context|weak_proof|unclear_template|command_ux|policy_runtime_mismatch)
-      printf '%s' "$value"
-      ;;
-    *) die "unknown friction '$1'. Use: none, missing-context, weak-proof, unclear-template, command-ux, or policy-runtime-mismatch" ;;
-  esac
-}
-
-json_escape() {
-  local input="$1"
-  input=${input//\\/\\\\}
-  input=${input//\"/\\\"}
-  input=${input//$'\n'/\\n}
-  input=${input//$'\r'/\\r}
-  input=${input//$'\t'/\\t}
-  printf '%s' "$input"
-}
-json_array() {
-  local input="${1:-}" part trimmed first=1
-  IFS=',' read -r -a parts <<< "$input"
-  printf '['
-  for part in "${parts[@]}"; do
-    trimmed="$(trim "$part")"
-    [ -n "$trimmed" ] || continue
-    [ $first -eq 1 ] || printf ','
-    first=0
-    printf '"%s"' "$(json_escape "$trimmed")"
-  done
-  printf ']'
-}
-json_sql_value() {
-  [ -n "${1:-}" ] || { printf 'NULL'; return; }
-  printf "'%s'" "$(sql_escape "$(json_array "$1")")"
-}
-
 work_dir_for_ticket() {
   local id="$1" match best_match=""
   for match in "$REPO_ROOT"/docs/work/"$id"-*; do
@@ -1568,77 +1529,23 @@ cmd_decision() {
   esac
 }
 
-cmd_trace() {
-  need_db
-  local task_summary="" ticket_id="" agent="" outcome="" duration="" tokens="" actions="" read="" changed="" decisions="" errors="" friction="" notes=""
-  while [ $# -gt 0 ]; do
-    case "$1" in
-      --summary) task_summary="$2"; shift 2 ;;
-      --ticket) ticket_id="$2"; shift 2 ;;
-      --agent) agent="$2"; shift 2 ;;
-      --outcome) outcome="$2"; shift 2 ;;
-      --duration) duration="$2"; shift 2 ;;
-      --tokens) tokens="$2"; shift 2 ;;
-      --actions) actions="$2"; shift 2 ;;
-      --read) read="$2"; shift 2 ;;
-      --changed) changed="$2"; shift 2 ;;
-      --decisions) decisions="$2"; shift 2 ;;
-      --errors) errors="$2"; shift 2 ;;
-      --friction) friction="$(normalize_friction "$2")"; shift 2 ;;
-      --notes) notes="$2"; shift 2 ;;
-      *) die "trace: unknown flag $1" ;;
-    esac
-  done
-  [ -n "$task_summary" ] || die "trace: --summary is required"
-  [ -n "$outcome" ] || die "trace: --outcome is required"
-  if [ -n "$ticket_id" ]; then
-    sql "SELECT ticket_id FROM ticket_workflow WHERE ticket_id=$(sql_literal "$ticket_id");" >/dev/null \
-      || die "trace: ticket lookup failed"
-    [ -n "$(sql "SELECT ticket_id FROM ticket_workflow WHERE ticket_id=$(sql_literal "$ticket_id");")" ] \
-      || die "trace: ticket '$ticket_id' not found"
-  fi
-  sql "INSERT INTO trace (
-         task_summary, ticket_id, agent, actions_taken, files_read,
-         files_changed, decisions_made, errors, outcome, duration_seconds,
-         token_estimate, harness_friction, notes
-       ) VALUES (
-         $(sql_literal "$task_summary"),
-         $(sql_or_null "$ticket_id"),
-         $(sql_or_null "$agent"),
-         $(json_sql_value "$actions"),
-         $(json_sql_value "$read"),
-         $(json_sql_value "$changed"),
-         $(json_sql_value "$decisions"),
-         $(json_sql_value "$errors"),
-         $(sql_literal "$outcome"),
-         $(sql_or_null "$duration"),
-         $(sql_or_null "$tokens"),
-         $(sql_or_null "$friction"),
-         $(sql_or_null "$notes")
-       );"
-  info "Trace recorded."
-}
-
 cmd_query() {
   local view="${1:-}"
   case "$view" in
-    tickets|decisions|traces|friction|stats|sql) need_db ;;
+    tickets|decisions|stats|sql) need_db ;;
   esac
   case "$view" in
     tickets) sql_pretty "SELECT ticket_id, ticket_role, parent_ticket_id, status, ticket_path, proposal_approved_at, plan_approved_at, code_review_approved_at, updated_at FROM ticket_workflow ORDER BY ticket_id;" ;;
     decisions) sql_pretty "SELECT id, status, title, doc_path, last_verified_result FROM decision ORDER BY id;" ;;
-    traces) sql_pretty "SELECT id, created_at, task_summary, outcome, ticket_id, harness_friction FROM trace ORDER BY id DESC LIMIT 20;" ;;
-    friction) sql_pretty "SELECT id, created_at, task_summary, harness_friction FROM trace WHERE harness_friction IS NOT NULL AND harness_friction NOT IN ('', 'none') ORDER BY id DESC LIMIT 20;" ;;
     stats)
-      local tickets decisions traces
+      local tickets decisions
       tickets="$(sql "SELECT COUNT(*) FROM ticket_workflow;")"
       decisions="$(sql "SELECT COUNT(*) FROM decision;")"
-      traces="$(sql "SELECT COUNT(*) FROM trace;")"
-      printf '%-8s %-10s %-6s\n' TICKETS DECISIONS TRACES
-      printf '%-8s %-10s %-6s\n' "$tickets" "$decisions" "$traces"
+      printf '%-8s %-10s\n' TICKETS DECISIONS
+      printf '%-8s %-10s\n' "$tickets" "$decisions"
       ;;
     sql) shift; sql_pretty "$*" ;;
-    *) die "query: expected tickets, decisions, traces, friction, stats, or sql" ;;
+    *) die "query: expected tickets, decisions, stats, or sql" ;;
   esac
 }
 
@@ -1656,7 +1563,6 @@ case "$cmd" in
   doctor) cmd_doctor "$@" ;;
   export) cmd_export "$@" ;;
   decision) cmd_decision "$@" ;;
-  trace) cmd_trace "$@" ;;
   query) cmd_query "$@" ;;
   *) usage; exit 1 ;;
 esac
