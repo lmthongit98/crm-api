@@ -11,8 +11,11 @@ current repository.
 - `HARNESS_SKILLS.md`: phase-to-skill and gate-to-output mapping for the Codex
   ticket workflow adapter.
 - `FEATURE_INTAKE.md`: intake classification and risk-lane rules.
+- `RAW_PROMPT_ROUTER.md`: route labels and output rules for raw requests.
+- `FREESTYLE_PROMOTION.md`: explicit criteria for leaving `freestyle`.
+- `FREESTYLE_MODE.md`: operating rules for work that stays in `freestyle`.
+- `WORKFLOW_SELECTION.md`: engagement-mode and workflow-type routing rules.
 - `ARCHITECTURE.md`: current brownfield architecture and boundary rules.
-- `TEST_MATRIX.md`: behavior-to-proof expectations for current and planned work.
 - `CONTEXT_RULES.md`: what agents should read by task phase and risk lane.
 - `TRACE_SPEC.md`: expected trace depth after work.
 

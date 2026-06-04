@@ -59,7 +59,7 @@ continuing to the next gate.
 
 | Phase | Primary execution | Gate requirement before use | Main outputs | Stop conditions |
 | --- | --- | --- | --- | --- |
-| Raw requirement intake | `raw-requirement-intake` | Human has provided a raw requirement instead of a tracked ticket id | intake classification, ticket recommendation or direct-work recommendation, optional ticket draft | Missing requirement clarity, unclear scope, unresolved concepts not found in repo truth, or need to turn the request into a tracked ticket before phase work |
+| Raw requirement intake | `raw-requirement-intake` | Human has provided a raw requirement instead of a tracked ticket id | intake classification, router outcome, engagement-mode recommendation, workflow-type recommendation, rationale codes, ticket recommendation or direct-work recommendation, optional ticket draft | Missing requirement clarity, unclear scope, unresolved concepts not found in repo truth, or need to turn the request into a tracked ticket before phase work |
 | Analyze | `ticket-analysis` | Ticket file exists at `docs/tickets/<ticketId>.md` | `analysis.md` under `docs/work/` | Missing ticket, ambiguous requirements, unresolved concepts not found in repo truth, or request to move into proposal, plan, code, tests, or UAT |
 | Decompose | `ticket-decomposition` | Ticket exists and analysis or proposal shows it is too broad for one safe review | child ticket drafts, parent metadata updates, parent `proposal.md` routing updates | Ticket is already narrow enough for one safe review, missing scope clarity, or parent-child metadata cannot be established cleanly |
 | Proposal | `ticket-proposal-plan` with `goal=proposal` | Analysis complete for `normal` and `high-risk`; `tiny` and `normal-fast` may start here directly | `proposal.md` | Missing required analysis for lanes that need it, unresolved ambiguity, or attempt to create plan or code before proposal approval |
@@ -71,6 +71,15 @@ continuing to the next gate.
 Use `raw-requirement-intake` when the user has given a raw requirement instead
 of a tracked ticket id.
 
+Its primary job is to return one route label:
+
+- `needs-clarification`
+- `direct-work`
+- `tracked-feature`
+- `tracked-bug-fix`
+- `tracked-investigation`
+- `tracked-review`
+
 Use `ticket-orchestrator` when the user has not specified the phase for an
 existing tracked ticket and the runtime must determine the next legal action.
 
@@ -81,7 +90,7 @@ working days.
 ## Required Commands By Phase
 
 - Raw requirement intake:
-  - inspect `docs/FEATURE_INTAKE.md`, `docs/AGENT_PROTOCOL.md`, and `docs/PROJECT_PROFILE.md`
+  - inspect `docs/FEATURE_INTAKE.md`, `docs/RAW_PROMPT_ROUTER.md`, `docs/FREESTYLE_PROMOTION.md`, `docs/FREESTYLE_MODE.md`, `docs/WORKFLOW_SELECTION.md`, `docs/AGENT_PROTOCOL.md`, and `docs/PROJECT_PROFILE.md`
   - inspect relevant repo code and docs before classifying
   - when asking follow-up questions, include suggested answers the user can confirm or refine
   - if non-trivial, recommend creating `docs/tickets/<ticketId>.md` before phase work
@@ -90,7 +99,6 @@ working days.
   - `scripts/harness ticket next --id <ticketId>`
   - `scripts/harness ticket check-phase --id <ticketId>`
   - `scripts/harness ticket status --id <ticketId>`
-  - `scripts/harness query matrix`
   - `scripts/harness query tickets`
   - when asking follow-up questions, include suggested answers the user can confirm or refine
 - Decompose:
@@ -115,7 +123,6 @@ working days.
   - `scripts/harness ticket next --id <ticketId>`
   - `scripts/harness ticket status --id <ticketId>`
   - project validation commands from `README.md`
-  - `scripts/harness query matrix`
 - Review:
   - `scripts/harness ticket next --id <ticketId>`
   - `scripts/harness ticket status --id <ticketId>`

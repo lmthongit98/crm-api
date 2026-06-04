@@ -1,0 +1,38 @@
+version: 1
+
+applies_to: raw-prompts
+
+decision_order:
+  - clarification
+  - tracked-promotion
+  - freestyle-stay
+
+tracked_promotion_triggers:
+  promote_if_any:
+    - explicit_tracked_override
+    - explicit_workflow_override
+    - approval_history_needed
+    - durable_handoff_needed
+    - multi_step_execution
+    - high_risk_surface
+  promote_if_two_or_more:
+    - validation_heavy_change
+    - broad_change_scope
+    - unclear_change_impact
+    - existing_behavior_risk
+    - cross_surface_change
+
+freestyle_stay_requirements:
+  - repo_context_checked
+  - requirements_clear_enough
+  - no_explicit_tracked_override
+  - no_high_risk_surface
+  - no_approval_history_needed
+  - no_durable_handoff_needed
+  - single_session_feasible
+  - narrow_or_question_scope
+
+outcome_priority:
+  - needs-clarification
+  - tracked-route
+  - direct-work

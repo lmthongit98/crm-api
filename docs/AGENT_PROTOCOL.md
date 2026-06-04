@@ -17,7 +17,6 @@ Tracked markdown is the portable source of truth for team workflows:
 - `docs/work/<ticketId>-*/` stores the work packet: analysis, proposal,
   implementation plan, validation evidence, and optional UAT mapping.
 - `docs/product/*` stores accepted product behavior.
-- `docs/TEST_MATRIX.md` stores expected proof state for review.
 - `docs/decisions/*` stores durable architectural or workflow decisions.
 
 `harness.db` is a local operational cache. Rebuild it from tracked docs with:
@@ -47,9 +46,32 @@ Every task has two possible outputs:
 2. Harness delta: docs, templates, validation expectations, decision records,
    or workflow guidance that make the next task easier.
 
-## Ticket Workflow
+## Workflow Selection And Ticket Workflow
 
-The default workflow is:
+Requests should first be routed by:
+
+1. raw prompt router outcome when no tracked ticket exists
+2. `engagement_mode`
+3. `workflow_type`
+4. `lane`
+
+The machine-readable raw prompt router contract lives in
+`.harness/raw-prompt-router.yml`. The prose routing guide lives in
+`docs/RAW_PROMPT_ROUTER.md`.
+
+The machine-readable promotion criteria that decide when work must leave
+`freestyle` live in `.harness/freestyle-promotion.yml`. The prose guide lives
+in `docs/FREESTYLE_PROMOTION.md`.
+
+The operating contract for work that remains in `freestyle` lives in
+`.harness/freestyle-mode.yml`. The prose guide lives in
+`docs/FREESTYLE_MODE.md`.
+
+The machine-readable selection contract lives in
+`.harness/workflow-selection.yml`. The prose selection guide lives in
+`docs/WORKFLOW_SELECTION.md`.
+
+The current active tracked workflow is the feature ticket flow:
 
 ```text
 ticket id
@@ -71,8 +93,11 @@ so:
 - `normal` and `high-risk` still start from `analysis`
 - `high-risk` still requires the full gated flow
 
-Intake classification, risk lanes, and hard escalation rules live in
-`docs/FEATURE_INTAKE.md`.
+Intake classification, raw prompt routing, freestyle promotion, freestyle mode,
+workflow selection, risk lanes, and hard escalation rules live in
+`docs/FEATURE_INTAKE.md`, `docs/RAW_PROMPT_ROUTER.md`,
+`docs/FREESTYLE_PROMOTION.md`, `docs/FREESTYLE_MODE.md`, and
+`docs/WORKFLOW_SELECTION.md`.
 
 At raw-requirement intake and during analysis, agents must ask follow-up
 questions when important concepts, business rules, or scope statements remain

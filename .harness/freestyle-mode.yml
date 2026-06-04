@@ -1,0 +1,40 @@
+version: 1
+
+mode: freestyle
+
+allowed_request_shapes:
+  - repo-question
+  - narrow-edit
+  - exploratory-debugging
+  - docs-update
+
+required_behaviors:
+  - inspect_repo_context_first
+  - stay_single_session_bounded
+  - keep_changes_narrow
+  - report_when_escalation_is_needed
+  - avoid_phase_specific_ticket_artifacts
+  - keep_validation_lightweight_but_honest
+
+disallowed_behaviors:
+  - create_tracked_ticket_by_default
+  - invent_workflow_state
+  - self_approve_gates
+  - write_proposal_plan_validation_artifacts_for_untracked_work
+  - expand_scope_silently
+
+escalation_triggers:
+  - scope_growth
+  - high_risk_surface
+  - approval_needed
+  - durable_handoff_needed
+  - validation_cost_growth
+  - multi_step_execution
+
+required_output_fields:
+  - route
+  - work_summary
+  - commands_run
+  - files_touched
+  - escalation_status
+  - next_step

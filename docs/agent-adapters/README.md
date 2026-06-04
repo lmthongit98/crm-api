@@ -7,6 +7,12 @@ protocol into a specific tool's trigger format, prompt format, or skill system.
 Adapters must not redefine gate policy, source-of-truth hierarchy, or done
 criteria.
 
+Workflow routing truth lives in `.harness/raw-prompt-router.yml`,
+`.harness/freestyle-promotion.yml`, `.harness/workflow-selection.yml`,
+`.harness/freestyle-mode.yml`, `docs/RAW_PROMPT_ROUTER.md`,
+`docs/FREESTYLE_PROMOTION.md`, `docs/FREESTYLE_MODE.md`, and
+`docs/WORKFLOW_SELECTION.md`.
+
 ## Codex
 
 Codex uses repo-local skills under `.codex/skills/*` and optional delegated

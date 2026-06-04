@@ -1,0 +1,48 @@
+version: 1
+
+selection_order:
+  - engagement_mode
+  - workflow_type
+  - lane
+
+engagement_modes:
+  freestyle:
+    status: active
+    tracked_ticket_required: false
+    durable_run_required: false
+    allowed_workflow_types: []
+  tracked:
+    status: active
+    tracked_ticket_required: true
+    durable_run_required: true
+    allowed_workflow_types:
+      - feature
+      - bug-fix
+      - investigation
+      - review
+
+workflow_types:
+  feature:
+    engagement_mode: tracked
+    contract_status: active
+    current_contract_ref: docs/AGENT_PROTOCOL.md
+    default_lane: normal
+    notes: Uses the current tracked ticket phase and approval-gate contract.
+  bug-fix:
+    engagement_mode: tracked
+    contract_status: planned
+    current_contract_ref: none
+    default_lane: normal-fast
+    notes: Reserved as a tracked routing target; dedicated bug-fix artifacts and gates are not implemented yet.
+  investigation:
+    engagement_mode: tracked
+    contract_status: planned
+    current_contract_ref: none
+    default_lane: normal
+    notes: Reserved as a tracked routing target; dedicated investigation artifacts and gates are not implemented yet.
+  review:
+    engagement_mode: tracked
+    contract_status: planned
+    current_contract_ref: none
+    default_lane: normal-fast
+    notes: Reserved as a tracked routing target; dedicated review workflow state is not implemented yet.

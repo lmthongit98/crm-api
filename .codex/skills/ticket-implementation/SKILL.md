@@ -13,7 +13,6 @@ Use this Codex adapter only for implementation after plan approval.
 - `scripts/harness ticket status --id <ticketId>`
 - `scripts/harness ticket gate --id <ticketId> --gate plan`
 - project validation commands from `README.md`
-- `scripts/harness query matrix`
 
 ## Stop Rules
 

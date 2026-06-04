@@ -1,0 +1,75 @@
+version: 1
+
+selection_source: .harness/workflow-selection.yml
+promotion_source: .harness/freestyle-promotion.yml
+
+required_inputs:
+  - prompt_source
+  - input_type
+  - explicit_user_mode
+  - repo_context_checked
+  - ambiguity_status
+  - risk_flags
+  - estimated_change_scope
+  - validation_expectation
+  - durable_state_need
+
+reason_codes:
+  - unclear_requirements
+  - user_explicit_override
+  - repo_question
+  - narrow_edit
+  - exploratory_debugging
+  - workflow_specific_request
+  - approval_history_needed
+  - durable_handoff_needed
+  - multi_step_execution
+  - high_risk_surface
+  - validation_heavy_change
+
+outcomes:
+  needs-clarification:
+    engagement_mode: undecided
+    workflow_type: undecided
+    tracked_ticket_required: false
+    ticket_draft_required: false
+    stop_for_questions: true
+  direct-work:
+    engagement_mode: freestyle
+    workflow_type: none
+    tracked_ticket_required: false
+    ticket_draft_required: false
+    stop_for_questions: false
+  tracked-feature:
+    engagement_mode: tracked
+    workflow_type: feature
+    tracked_ticket_required: true
+    ticket_draft_required: true
+    stop_for_questions: false
+  tracked-bug-fix:
+    engagement_mode: tracked
+    workflow_type: bug-fix
+    tracked_ticket_required: true
+    ticket_draft_required: true
+    stop_for_questions: false
+  tracked-investigation:
+    engagement_mode: tracked
+    workflow_type: investigation
+    tracked_ticket_required: true
+    ticket_draft_required: true
+    stop_for_questions: false
+  tracked-review:
+    engagement_mode: tracked
+    workflow_type: review
+    tracked_ticket_required: true
+    ticket_draft_required: true
+    stop_for_questions: false
+
+required_output_fields:
+  - route
+  - rationale_codes
+  - repo_context_summary
+  - open_questions
+  - recommended_next_step
+  - ticket_recommendation
+  - ticket_draft

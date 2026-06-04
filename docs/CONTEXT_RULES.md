@@ -19,7 +19,6 @@ Read to classify the request, find the affected surface, and choose a lane.
 | `docs/PROJECT_PROFILE.md` | Must | Must | Must |
 | `docs/FEATURE_INTAKE.md` | Must | Must | Must |
 | `docs/tickets/<ticketId>.md` | Must when ticket-driven | Must when ticket-driven | Must when ticket-driven |
-| `scripts/harness query matrix` | Must | Must | Must |
 | `scripts/harness query tickets` | Should when ticket-driven | Must when ticket-driven | Must when ticket-driven |
 | `README.md` | Should | Must | Must |
 | `docs/HARNESS_SKILLS.md` | Skip | Should for skill-driven ticket work | Must for workflow or skill changes |
@@ -42,7 +41,6 @@ Read to decide the smallest safe approach and expected proof.
 | `docs/HARNESS_SKILLS.md` | Skip unless skill behavior is relevant | Should for skill-driven ticket work | Must for workflow or specialist-agent changes |
 | `docs/templates/high-risk-work/*` | Skip | Skip unless risk escalates | Must |
 | `docs/ARCHITECTURE.md` | Skip | Should for code or boundary changes | Must |
-| `docs/TEST_MATRIX.md` or `scripts/harness query matrix` | Should | Must | Must |
 | Relevant decisions | Skip | Should | Must |
 | `docs/HARNESS_MATURITY.md` | Skip | Should for Harness improvements | Must for maturity or process changes |
 | Trace history and current Harness docs | Skip | Should if friction repeats | Must if changing Harness behavior |
@@ -72,7 +70,6 @@ Read to prove the change and avoid claiming unsupported completion.
 | Document Or Source | Tiny | Normal | High-Risk |
 | --- | --- | --- | --- |
 | Work item or ticket acceptance criteria | Should | Must | Must |
-| `docs/TEST_MATRIX.md` or `scripts/harness query matrix` | Should | Must | Must |
 | Validation section of work packet | Skip if no packet | Must | Must |
 | `docs/HARNESS_SKILLS.md` | Skip unless validating skill behavior | Should for workflow-skill verification | Must for workflow or specialist-agent claims |
 | `docs/templates/validation-report.md` | Skip | Should for notable proof | Must for high-risk proof |
@@ -86,7 +83,6 @@ Read to leave useful evidence for the next agent.
 | --- | --- | --- | --- |
 | `docs/TRACE_SPEC.md` | Should | Must | Must |
 | `scripts/harness query tickets` | Should when ticket-driven | Must when ticket-driven | Must when ticket-driven |
-| `scripts/harness query matrix` | Should | Must | Must |
 | Trace history or recent friction records | Skip | Should if friction occurred | Must |
 | Changed-file list from `git status --short` | Must | Must | Must |
 | Validation command output | Should | Must | Must |
@@ -111,7 +107,7 @@ Read to leave useful evidence for the next agent.
 
 | Lane | Target Context Budget | Read Shape |
 | --- | --- | --- |
-| Tiny | About 2K tokens | Stable entrypoint docs, matrix query, and the exact file being changed. |
+| Tiny | About 2K tokens | Stable entrypoint docs and the exact file being changed. |
 | Normal | About 5K tokens | Intake docs, relevant product or work docs, architecture when structural, validation expectations, and trace spec at the end. |
 | High-risk | About 10K tokens | Full intake, architecture, relevant decisions, high-risk templates, product docs, validation docs, and trace spec. |
 

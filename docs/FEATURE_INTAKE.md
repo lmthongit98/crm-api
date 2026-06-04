@@ -17,6 +17,8 @@ suggested answers the human can confirm, reject, or refine.
 ```text
 user prompt
   -> classify input type
+  -> choose engagement mode
+  -> choose workflow type
   -> restate as ticket slice or work packet
   -> find affected product docs and work packets
   -> ask follow-up questions for unclear concepts or missing repo truth
@@ -24,6 +26,22 @@ user prompt
   -> choose lane: tiny, normal-fast, normal, or high-risk
   -> record type and lane in ticket metadata
 ```
+
+Use `.harness/workflow-selection.yml` and `docs/WORKFLOW_SELECTION.md` to keep
+engagement mode selection separate from workflow type selection and lane
+selection.
+
+For requests that do not already start from a tracked ticket, use
+`.harness/raw-prompt-router.yml` and `docs/RAW_PROMPT_ROUTER.md` first so the
+adapter can choose `needs-clarification`, `direct-work`, or a tracked route
+before workflow selection.
+
+Use `.harness/freestyle-promotion.yml` and `docs/FREESTYLE_PROMOTION.md` to
+decide when `direct-work` is no longer legal and the request must be promoted
+into tracked workflow.
+
+If `direct-work` remains legal, use `.harness/freestyle-mode.yml` and
+`docs/FREESTYLE_MODE.md` to govern the lightweight execution path.
 
 ## Input Types
 
@@ -44,6 +62,12 @@ Every tracked ticket should record:
 - `Type`: what kind of change this is, such as `feature`, `bugfix`,
   `maintenance`, or `harness-improvement`
 - `Lane`: how much workflow ceremony the ticket needs
+
+Lane selection is not the same thing as workflow type selection. In the current
+MVP, only the tracked `feature` workflow has a fully active artifact and gate
+contract. Other workflow types may still be selected and documented as planned
+routing targets without implying that their dedicated runtime behavior already
+exists.
 
 The harness should choose lane from risk, scope, and clarity together. Do not
 use "not high-risk" by itself as permission to skip workflow phases.
@@ -94,7 +118,7 @@ Requirements:
 - Link relevant product docs.
 - Add or update validation expectations.
 - Implement the smallest vertical slice when implementation exists.
-- Keep `docs/TEST_MATRIX.md` and validation notes current for the affected slice.
+- Keep validation notes current for the affected slice.
 - If analysis finds concepts or requirements that are still unclear after repo
   inspection, ask the user follow-up questions before moving to proposal.
   Include suggested answers with each question so the user can resolve

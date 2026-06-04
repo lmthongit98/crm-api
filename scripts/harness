@@ -225,38 +225,6 @@ ensure_work_dir() {
   printf '%s' "$work_dir"
 }
 
-matrix_rows_tsv() {
-  local matrix_file="$REPO_ROOT/docs/TEST_MATRIX.md"
-  [ -f "$matrix_file" ] || return 0
-  awk -F'|' '
-    /^\|/ {
-      if ($2 ~ /^[[:space:]]*Work Item[[:space:]]*$/) next
-      if ($2 ~ /^[[:space:]]*---/) next
-      if (NF < 10) next
-      for (i=2; i<=10; i++) {
-        gsub(/^[[:space:]]+|[[:space:]]+$/, "", $i)
-      }
-      print $2 "\t" $3 "\t" $4 "\t" $5 "\t" $6 "\t" $7 "\t" $8 "\t" $9 "\t" $10
-    }' "$matrix_file"
-}
-
-print_matrix_query() {
-  local rows
-  rows="$(matrix_rows_tsv)"
-  if [ -z "$rows" ]; then
-    printf 'No matrix rows found in docs/TEST_MATRIX.md\n'
-    return 0
-  fi
-  printf '%s\n' "$rows" | awk -F'\t' '
-    BEGIN {
-      fmt="%-16s %-48s %-6s %-11s %-6s %-6s %-10s %-14s %s\n"
-      printf fmt, "WORK_ITEM", "CONTRACT", "UNIT", "INTEGRATION", "E2E", "UAT", "PLATFORM", "STATUS", "EVIDENCE"
-    }
-    {
-      printf fmt, $1, $2, $3, $4, $5, $6, $7, $8, $9
-    }'
-}
-
 extract_status_line() {
   local path="$1"
   [ -f "$path" ] || return 0
@@ -474,15 +442,6 @@ apply_schema_file() {
   local applied
   applied="$(sql "SELECT version FROM schema_version WHERE version=$version;" 2>/dev/null || true)"
   [ -n "$applied" ] && return 0
-  if [ "$version" = "2" ]; then
-    local has_ticket_role has_parent_ticket_id
-    has_ticket_role="$(sql "SELECT 1 FROM pragma_table_info('ticket_workflow') WHERE name='ticket_role' LIMIT 1;" 2>/dev/null || true)"
-    has_parent_ticket_id="$(sql "SELECT 1 FROM pragma_table_info('ticket_workflow') WHERE name='parent_ticket_id' LIMIT 1;" 2>/dev/null || true)"
-    if [ -n "$has_ticket_role" ] && [ -n "$has_parent_ticket_id" ]; then
-      sql "INSERT OR IGNORE INTO schema_version (version) VALUES ($version);"
-      return 0
-    fi
-  fi
   sql_file "$file"
   sql "INSERT OR IGNORE INTO schema_version (version) VALUES ($version);"
 }
@@ -1240,9 +1199,7 @@ cmd_doctor() {
 cmd_export() {
   need_db
   printf '# Harness Export\n\n'
-  printf '## Test Matrix\n'
-  print_matrix_query
-  printf '\n## Tickets\n'
+  printf '## Tickets\n'
   sql_pretty "SELECT ticket_id, ticket_role, parent_ticket_id, status, ticket_path, updated_at FROM ticket_workflow ORDER BY ticket_id;" 2>/dev/null || true
   printf '\n## Decisions\n'
   sql_pretty "SELECT id, status, title FROM decision ORDER BY id;"
@@ -1344,22 +1301,20 @@ cmd_query() {
     tickets|decisions|traces|friction|stats|sql) need_db ;;
   esac
   case "$view" in
-    matrix) print_matrix_query ;;
     tickets) sql_pretty "SELECT ticket_id, ticket_role, parent_ticket_id, status, ticket_path, proposal_approved_at, plan_approved_at, code_review_approved_at, updated_at FROM ticket_workflow ORDER BY ticket_id;" ;;
     decisions) sql_pretty "SELECT id, status, title, doc_path, last_verified_result FROM decision ORDER BY id;" ;;
     traces) sql_pretty "SELECT id, created_at, task_summary, outcome, ticket_id, harness_friction FROM trace ORDER BY id DESC LIMIT 20;" ;;
     friction) sql_pretty "SELECT id, created_at, task_summary, harness_friction FROM trace WHERE harness_friction IS NOT NULL AND harness_friction NOT IN ('', 'none') ORDER BY id DESC LIMIT 20;" ;;
     stats)
-      local matrix_rows tickets decisions traces
-      matrix_rows="$(matrix_rows_tsv | wc -l | tr -d ' ')"
+      local tickets decisions traces
       tickets="$(sql "SELECT COUNT(*) FROM ticket_workflow;")"
       decisions="$(sql "SELECT COUNT(*) FROM decision;")"
       traces="$(sql "SELECT COUNT(*) FROM trace;")"
-      printf '%-12s %-8s %-10s %-6s\n' MATRIX_ROWS TICKETS DECISIONS TRACES
-      printf '%-12s %-8s %-10s %-6s\n' "$matrix_rows" "$tickets" "$decisions" "$traces"
+      printf '%-8s %-10s %-6s\n' TICKETS DECISIONS TRACES
+      printf '%-8s %-10s %-6s\n' "$tickets" "$decisions" "$traces"
       ;;
     sql) shift; sql_pretty "$*" ;;
-    *) die "query: expected matrix, tickets, decisions, traces, friction, stats, or sql" ;;
+    *) die "query: expected tickets, decisions, traces, friction, stats, or sql" ;;
   esac
 }
 

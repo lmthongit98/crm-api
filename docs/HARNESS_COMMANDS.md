@@ -24,7 +24,7 @@ Top-level commands:
 - `export`
 - `decision add|verify`
 - `trace`
-- `query matrix|tickets|decisions|traces|friction|stats|sql`
+- `query tickets|decisions|traces|friction|stats|sql`
 
 ## Runtime State
 
@@ -320,10 +320,6 @@ Behavior:
 
 ## Query Commands
 
-### `scripts/harness query matrix`
-
-Reads `docs/TEST_MATRIX.md` and prints a table view of the tracked matrix rows.
-
 ### `scripts/harness query tickets`
 
 Prints the `ticket_workflow` table.
@@ -344,7 +340,6 @@ Prints the 20 most recent trace rows with a non-empty friction category.
 
 Prints counts for:
 
-- matrix rows
 - tickets
 - decisions
 - traces
@@ -361,7 +356,6 @@ Use this for local inspection only.
 
 Prints a combined runtime snapshot containing:
 
-- the parsed test matrix
 - tracked ticket rows from `ticket_workflow`
 - tracked decision rows from `decision`
 

@@ -1,4 +1,4 @@
 interface:
   display_name: "Raw Requirement Intake"
-  short_description: "Classify a raw requirement and recommend ticket-driven flow when needed"
-  default_prompt: "Use $raw-requirement-intake to classify this raw requirement and decide whether it should become a Harness ticket."
+  short_description: "Classify a raw requirement and return a Harness workflow route"
+  default_prompt: "Use $raw-requirement-intake to classify this raw requirement and return `needs-clarification`, `direct-work`, or a tracked Harness workflow recommendation."

@@ -1,6 +1,6 @@
 ---
 name: ticket-analysis
-description: Use when working in the Harness ticket workflow and the requested phase is analysis for a ticket such as TASK-123. This skill loads the ticket, matrix, required Harness docs, relevant product and work context, and current code shape, then writes or updates analysis.md only.
+description: Use when working in the Harness ticket workflow and the requested phase is analysis for a ticket such as TASK-123. This skill loads the ticket, required Harness docs, relevant product and work context, and current code shape, then writes or updates analysis.md only.
 ---
 
 # Ticket Analysis
@@ -19,7 +19,6 @@ task in the current repo.
 - `scripts/harness ticket next --id <ticketId>`
 - `scripts/harness ticket check-phase --id <ticketId>`
 - `scripts/harness ticket status --id <ticketId>`
-- `scripts/harness query matrix`
 - `scripts/harness query tickets`
 
 ## Output Contract
