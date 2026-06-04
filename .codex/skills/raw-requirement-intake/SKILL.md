@@ -12,6 +12,7 @@ high-level requirement rather than an existing ticket such as `TASK-123`.
 
 - Read `docs/FEATURE_INTAKE.md`, `docs/RAW_PROMPT_ROUTER.md`,
   `docs/FREESTYLE_PROMOTION.md`, `docs/FREESTYLE_MODE.md`,
+  `docs/WORKFLOW_TRIGGERS.md`,
   `docs/WORKFLOW_SELECTION.md`,
   `docs/AGENT_PROTOCOL.md`, and `docs/PROJECT_PROFILE.md` first.
 - Inspect relevant repo code and docs before classifying the requirement.
@@ -23,8 +24,12 @@ high-level requirement rather than an existing ticket such as `TASK-123`.
 - Keep asking until the remaining ambiguity is small enough to choose a safe
   router outcome.
 - Apply `.harness/raw-prompt-router.yml`,
+  `.harness/workflow-triggers.yml`,
   `.harness/freestyle-promotion.yml`, and
   `.harness/workflow-selection.yml` in that order.
+- Treat explicit trigger conventions such as `$freestyle`, `$feature`,
+  `$bugfix`, `$review`, and `$workflow` as strong routing signals, but do not
+  let them suppress clarification or forced tracked promotion.
 - If `route` is `direct-work`, use `.harness/freestyle-mode.yml` as the
   operating contract for the next step.
 - Determine:
@@ -75,3 +80,7 @@ When `route` is a tracked route, also report:
 - likely ticket `Lane`
 - `ticket_recommendation`
 - optional `ticket_draft`
+
+If `route` is `tracked-bug-fix`, point the next tracked step at
+`docs/BUG_FIX_WORKFLOW.md` and the preferred templates under
+`docs/templates/bug-fix-work/`.

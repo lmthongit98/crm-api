@@ -2,6 +2,7 @@ version: 1
 
 selection_source: .harness/workflow-selection.yml
 promotion_source: .harness/freestyle-promotion.yml
+trigger_source: .harness/workflow-triggers.yml
 
 required_inputs:
   - prompt_source

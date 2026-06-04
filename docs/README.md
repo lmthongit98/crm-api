@@ -14,7 +14,10 @@ current repository.
 - `RAW_PROMPT_ROUTER.md`: route labels and output rules for raw requests.
 - `FREESTYLE_PROMOTION.md`: explicit criteria for leaving `freestyle`.
 - `FREESTYLE_MODE.md`: operating rules for work that stays in `freestyle`.
+- `WORKFLOW_TRIGGERS.md`: explicit override conventions for raw prompts.
 - `WORKFLOW_SELECTION.md`: engagement-mode and workflow-type routing rules.
+- `BUG_FIX_WORKFLOW.md`: tracked bug-fix artifact and gate expectations.
+- `REVIEW_WORKFLOW.md`: durable review artifact and code-review gate rules.
 - `ARCHITECTURE.md`: current brownfield architecture and boundary rules.
 - `CONTEXT_RULES.md`: what agents should read by task phase and risk lane.
 - `TRACE_SPEC.md`: expected trace depth after work.

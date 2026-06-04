@@ -10,6 +10,7 @@ Use this Codex adapter for the review phase of a Harness ticket.
 ## Required Behavior
 
 - Run `scripts/harness ticket next --id <ticketId>` before review.
+- Create or update only `review.md` in the ticket work packet.
 - Review-only mindset.
 - Findings first, ordered by severity.
 - Focus on bugs, regressions, missing proof, and gate violations.

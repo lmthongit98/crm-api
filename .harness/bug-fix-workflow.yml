@@ -1,0 +1,102 @@
+version: 1
+
+workflow_type: bug-fix
+contract_status: active
+
+ticket_type_values:
+  - bugfix
+
+router_outcomes:
+  - tracked-bug-fix
+
+phase_order:
+  required:
+    - analysis
+    - proposal
+    - proposal_approval
+    - implementation_plan
+    - plan_approval
+    - implementation
+    - code_review_approval
+    - validation
+  optional:
+    - optional_uat
+
+artifacts:
+  analysis:
+    required_file_pattern: docs/work/<ticketId>-*/analysis.md
+    preferred_template: docs/templates/bug-fix-work/analysis.md
+    required_sections:
+      - reproduction_context
+      - expected_behavior
+      - actual_behavior
+      - impact_scope
+      - suspected_root_cause_or_open_question
+      - regression_scope
+  proposal:
+    required_file_pattern: docs/work/<ticketId>-*/proposal.md
+    preferred_template: docs/templates/bug-fix-work/proposal.md
+    required_sections:
+      - fix_outcome
+      - corrective_approach
+      - behavior_guardrails
+      - rollback_or_containment
+      - validation_targets
+  implementation_plan:
+    required_file_pattern: docs/work/<ticketId>-*/implementation-plan.md
+    preferred_template: docs/templates/bug-fix-work/implementation-plan.md
+    required_sections:
+      - before_after_proof_strategy
+      - code_and_data_changes
+      - tests_and_regression_checks
+      - observability_and_rollback
+  validation:
+    required_file_pattern: docs/work/<ticketId>-*/validation.md
+    preferred_template: docs/templates/bug-fix-work/validation.md
+    required_sections:
+      - reproduction_steps
+      - results
+      - regression_checks
+      - remaining_risk
+
+gates:
+  proposal_approval:
+    required_before: implementation_plan
+    human_approval_required: true
+    focus:
+      - expected_vs_actual_are_correct
+      - corrective_direction_is_narrow
+      - hidden_scope_growth_is_called_out
+  plan_approval:
+    required_before: implementation
+    human_approval_required: true
+    focus:
+      - fix_scope_matches_the_bug
+      - regression_checks_are_targeted
+      - rollback_or_containment_is_clear
+  code_review_approval:
+    required_before: optional_uat
+    human_approval_required: true
+    focus:
+      - implementation_matches_approved_fix
+      - nearby_behavior_is_protected
+      - residual_risk_is_stated
+
+lane_defaults:
+  default: normal-fast
+  allowed:
+    - tiny
+    - normal-fast
+    - normal
+    - high-risk
+  escalate_to_high_risk_when:
+    - auth_or_authorization
+    - data_loss_or_migration
+    - public_contract_change
+    - external_provider_behavior
+    - audit_or_security
+    - weak_existing_proof
+
+current_mvp_boundary:
+  shared_runtime_states: Uses the same tracked ticket runtime statuses as feature workflow.
+  start_phase_scaffolding: scripts/harness ticket start-phase selects docs/templates/bug-fix-work/* for tracked bugfix ticket metadata on analysis, proposal, implementation-plan, and validation.

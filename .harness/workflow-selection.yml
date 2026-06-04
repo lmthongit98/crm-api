@@ -30,10 +30,10 @@ workflow_types:
     notes: Uses the current tracked ticket phase and approval-gate contract.
   bug-fix:
     engagement_mode: tracked
-    contract_status: planned
-    current_contract_ref: none
+    contract_status: active
+    current_contract_ref: docs/BUG_FIX_WORKFLOW.md
     default_lane: normal-fast
-    notes: Reserved as a tracked routing target; dedicated bug-fix artifacts and gates are not implemented yet.
+    notes: Uses the tracked ticket phase order with dedicated bug-fix artifact and gate expectations.
   investigation:
     engagement_mode: tracked
     contract_status: planned

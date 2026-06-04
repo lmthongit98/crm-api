@@ -1,0 +1,49 @@
+version: 1
+
+applies_to: raw-prompts
+trigger_prefix: $
+
+triggers:
+  freestyle:
+    meaning: Bias the router toward lightweight direct work.
+    engagement_mode: freestyle
+    workflow_type: none
+    route_bias: direct-work
+    ticket_required: false
+    notes: Still loses to forced tracked promotion or clarification needs.
+  feature:
+    meaning: Bias the router toward tracked feature delivery.
+    engagement_mode: tracked
+    workflow_type: feature
+    route_bias: tracked-feature
+    ticket_required: true
+  bugfix:
+    meaning: Bias the router toward tracked bug-fix execution.
+    engagement_mode: tracked
+    workflow_type: bug-fix
+    route_bias: tracked-bug-fix
+    ticket_required: true
+  review:
+    meaning: Bias the router toward tracked review execution.
+    engagement_mode: tracked
+    workflow_type: review
+    route_bias: tracked-review
+    ticket_required: true
+  workflow:
+    meaning: Force tracked execution while letting the adapter choose workflow type after repo inspection.
+    engagement_mode: tracked-or-undecided
+    workflow_type: adapter-select
+    route_bias: tracked-any
+    ticket_required: true
+
+precedence:
+  - explicit_trigger
+  - repo_inspection
+  - promotion_rules
+
+safety_rule:
+  override_never_suppresses:
+    - needs-clarification
+    - high-risk-escalation
+    - approval-gates
+    - forced-tracked-promotion

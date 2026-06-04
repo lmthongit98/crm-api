@@ -1,0 +1,27 @@
+version: 1
+
+applies_to:
+  - tracked-feature
+  - tracked-bug-fix
+
+review_phase:
+  phase_name: review
+  enters_after_status: implementation_complete
+  approval_gate_after_review: code_review
+
+artifact:
+  required_file_pattern: docs/work/<ticketId>-*/review.md
+  preferred_template: docs/templates/ticket-work/review.md
+  required_sections:
+    - scope_summary
+    - findings
+    - approval_recommendation
+    - residual_risks
+
+gate:
+  name: code_review
+  requires_review_artifact: true
+  requires_ticket_id_match: true
+
+current_mvp_boundary:
+  shared_status_machine: Review stays on the shared tracked ticket status machine and becomes durable through review.md plus gate enforcement.

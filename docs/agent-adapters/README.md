@@ -36,7 +36,7 @@ For another agent, create adapter instructions that map the same phases:
 - Analysis -> `analysis.md`
 - Proposal -> `proposal.md`
 - Plan -> `implementation-plan.md`
+- Review -> `review.md`
 - Implementation -> approved product slice only
-- Review -> findings-first review
 - Validation -> proof and `validation.md`
 - Optional UAT -> optional UAT mapping after code review approval

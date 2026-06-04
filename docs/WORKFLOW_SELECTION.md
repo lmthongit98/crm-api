@@ -11,8 +11,9 @@ The machine-readable source of truth for this selection is:
 - `.harness/workflow-selection.yml`
 
 For raw requests that do not already start from a tracked ticket, use
-`.harness/raw-prompt-router.yml` and `.harness/freestyle-promotion.yml` first,
-and enter workflow selection only after the router returns a tracked route.
+`.harness/raw-prompt-router.yml`, `.harness/workflow-triggers.yml`, and
+`.harness/freestyle-promotion.yml` first, and enter workflow selection only
+after the router returns a tracked route.
 
 ## Why This Exists
 
@@ -58,9 +59,12 @@ selected workflow needs.
 
 ## Current MVP Status
 
-Only `feature` currently has an active phase-and-gate contract in the portable
-workflow docs and runtime guidance.
+`feature` and `bug-fix` currently have active portable workflow contracts.
 
-`bug-fix`, `investigation`, and `review` are included now as machine-readable
-selection targets so adapters and future runtime work can route explicitly
-without pretending those dedicated workflow contracts already exist.
+`investigation` and `review` are still included as machine-readable selection
+targets so adapters and future runtime work can route explicitly without
+pretending those dedicated workflow contracts already exist.
+
+Tracked `bug-fix` currently shares the durable ticket phase order used by
+feature workflow, but it adds bug-oriented artifact and gate expectations
+through `docs/BUG_FIX_WORKFLOW.md` and `.harness/bug-fix-workflow.yml`.

@@ -65,7 +65,7 @@ continuing to the next gate.
 | Proposal | `ticket-proposal-plan` with `goal=proposal` | Analysis complete for `normal` and `high-risk`; `tiny` and `normal-fast` may start here directly | `proposal.md` | Missing required analysis for lanes that need it, unresolved ambiguity, or attempt to create plan or code before proposal approval |
 | Plan | `ticket-proposal-plan` with `goal=implementation-plan` | Proposal approved | `implementation-plan.md` | Proposal not approved, parent ticket is `decomposed`, or attempt to implement directly |
 | Implement | `ticket-implementation` | Plan approved | Code changes, work item updates, validation notes | Plan not approved or request to generate Robot UAT |
-| Review | `ticket-code-review` | Implementation exists | Findings-first review output, residual risks | Attempt to implement fixes by default or missing changed-scope context |
+| Review | `ticket-code-review` | Implementation exists | `review.md`, findings-first review output, residual risks | Attempt to implement fixes by default or missing changed-scope context |
 | Optional Robot UAT | `ticket-robot-uat` | Code review approved | optional `tests/robot/<ticketId>/`, `uat.md` | Code review gate not approved |
 
 Use `raw-requirement-intake` when the user has given a raw requirement instead
@@ -90,10 +90,12 @@ working days.
 ## Required Commands By Phase
 
 - Raw requirement intake:
-  - inspect `docs/FEATURE_INTAKE.md`, `docs/RAW_PROMPT_ROUTER.md`, `docs/FREESTYLE_PROMOTION.md`, `docs/FREESTYLE_MODE.md`, `docs/WORKFLOW_SELECTION.md`, `docs/AGENT_PROTOCOL.md`, and `docs/PROJECT_PROFILE.md`
+  - inspect `docs/FEATURE_INTAKE.md`, `docs/RAW_PROMPT_ROUTER.md`, `docs/FREESTYLE_PROMOTION.md`, `docs/FREESTYLE_MODE.md`, `docs/WORKFLOW_TRIGGERS.md`, `docs/WORKFLOW_SELECTION.md`, `docs/AGENT_PROTOCOL.md`, and `docs/PROJECT_PROFILE.md`
   - inspect relevant repo code and docs before classifying
   - when asking follow-up questions, include suggested answers the user can confirm or refine
   - if non-trivial, recommend creating `docs/tickets/<ticketId>.md` before phase work
+  - if routing to `tracked-bug-fix`, direct the next tracked step to `docs/BUG_FIX_WORKFLOW.md`
+  - treat explicit triggers such as `$freestyle`, `$feature`, `$bugfix`, `$review`, and `$workflow` as strong routing signals
 - Analyze:
   - `scripts/harness ticket load --id <ticketId>`
   - `scripts/harness ticket next --id <ticketId>`

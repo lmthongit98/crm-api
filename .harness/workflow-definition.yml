@@ -1,0 +1,191 @@
+version: 1
+
+runtime_scope: shared-tracked-ticket-runtime
+contract_status: active
+
+statuses:
+  ticket_loaded:
+    next_phase: lane-dependent-entry
+    description: Ticket exists and runtime state is loaded, but no tracked work packet phase is complete yet.
+  analysis_complete:
+    next_phase: proposal
+    description: Analysis exists and the next durable phase is proposal.
+  proposal_pending_approval:
+    next_phase: approval:proposal
+    description: Proposal exists and is waiting for explicit human approval.
+  proposal_approved:
+    next_phase: implementation-plan
+    description: Proposal is approved and the next durable phase is implementation planning.
+  decomposed:
+    next_phase: children
+    description: Parent ticket has decomposed into child tickets and should route execution away from the parent.
+  plan_pending_approval:
+    next_phase: approval:plan
+    description: Implementation plan exists and is waiting for explicit human approval.
+  plan_approved:
+    next_phase: implementation
+    description: Implementation may proceed in product code with validation evidence prepared afterward.
+  implementation_complete:
+    next_phase: review
+    description: Implementation is complete and the next durable step is review before code review approval.
+  code_review_approved:
+    next_phase: done-or-optional-uat
+    description: Code review approval passed and the shared runtime allows optional UAT afterward.
+  uat_generated:
+    next_phase: done
+    description: Optional UAT artifact exists and the tracked runtime is complete.
+  blocked:
+    next_phase: blocked
+    description: Ticket is blocked and must be repaired explicitly before normal execution resumes.
+
+phases:
+  analysis:
+    scaffold_file: docs/work/<ticketId>-*/analysis.md
+    scaffoldable: true
+    updates_status_to: analysis_complete
+  proposal:
+    scaffold_file: docs/work/<ticketId>-*/proposal.md
+    scaffoldable: true
+    updates_status_to: proposal_pending_approval
+  implementation_plan:
+    scaffold_file: docs/work/<ticketId>-*/implementation-plan.md
+    scaffoldable: true
+    updates_status_to: plan_pending_approval
+  review:
+    scaffold_file: docs/work/<ticketId>-*/review.md
+    scaffoldable: true
+    updates_status_to: implementation_complete
+  validation:
+    scaffold_file: docs/work/<ticketId>-*/validation.md
+    scaffoldable: true
+    updates_status_to: implementation_complete
+  uat:
+    scaffold_file: docs/work/<ticketId>-*/uat.md
+    scaffoldable: true
+    updates_status_to: uat_generated
+
+gates:
+  proposal:
+    allowed_when_status: proposal_pending_approval
+    approves_to_status: proposal_approved
+    requires_human_approval: true
+    blocks_phase: implementation_plan
+  plan:
+    allowed_when_status: plan_pending_approval
+    approves_to_status: plan_approved
+    requires_human_approval: true
+    blocks_phase: implementation
+  code_review:
+    allowed_when_status: implementation_complete
+    approves_to_status: code_review_approved
+    requires_human_approval: true
+    blocks_phase: optional_uat
+
+artifacts:
+  analysis:
+    required_from_status:
+      - analysis_complete
+      - proposal_pending_approval
+      - proposal_approved
+      - decomposed
+      - plan_pending_approval
+      - plan_approved
+      - implementation_complete
+      - code_review_approved
+      - uat_generated
+    optional_for_lanes:
+      - tiny
+      - normal-fast
+    phase_owner: analysis
+  proposal:
+    required_from_status:
+      - proposal_pending_approval
+      - proposal_approved
+      - decomposed
+      - plan_pending_approval
+      - plan_approved
+      - implementation_complete
+      - code_review_approved
+      - uat_generated
+    optional_for_lanes: []
+    phase_owner: proposal
+  implementation_plan:
+    required_from_status:
+      - plan_pending_approval
+      - plan_approved
+      - implementation_complete
+      - code_review_approved
+      - uat_generated
+    optional_for_lanes: []
+    phase_owner: implementation_plan
+  validation:
+    required_from_status:
+      - implementation_complete
+      - code_review_approved
+      - uat_generated
+    optional_for_lanes: []
+    phase_owner: validation
+  review:
+    required_from_status:
+      - code_review_approved
+      - uat_generated
+    optional_for_lanes: []
+    phase_owner: review
+  uat:
+    required_from_status:
+      - uat_generated
+    optional_for_lanes:
+      - tiny
+      - normal-fast
+      - normal
+      - high-risk
+    phase_owner: uat
+
+lane_rules:
+  allowed:
+    - tiny
+    - normal-fast
+    - normal
+    - high-risk
+  analysis_optional:
+    - tiny
+    - normal-fast
+  analysis_required:
+    - normal
+    - high-risk
+  proposal_entry_allowed_from:
+    - ticket_loaded
+    - analysis_complete
+
+workflow_type_bindings:
+  feature:
+    ticket_type_values:
+      - feature
+      - maintenance
+      - harness-improvement
+    template_family: docs/templates/ticket-work
+    phase_template_files:
+      analysis: docs/templates/ticket-work/analysis.md
+      proposal: docs/templates/ticket-work/proposal.md
+      implementation_plan: docs/templates/ticket-work/implementation-plan.md
+      review: docs/templates/ticket-work/review.md
+      validation: docs/templates/ticket-work/validation.md
+      uat: docs/templates/ticket-work/uat.md
+    contract_reference: shared tracked runtime plus generic ticket-work templates
+  bug-fix:
+    ticket_type_values:
+      - bugfix
+    template_family: docs/templates/bug-fix-work
+    phase_template_files:
+      analysis: docs/templates/bug-fix-work/analysis.md
+      proposal: docs/templates/bug-fix-work/proposal.md
+      implementation_plan: docs/templates/bug-fix-work/implementation-plan.md
+      review: docs/templates/ticket-work/review.md
+      validation: docs/templates/bug-fix-work/validation.md
+      uat: docs/templates/ticket-work/uat.md
+    contract_reference: .harness/bug-fix-workflow.yml
+
+current_mvp_boundary:
+  runtime_reads_shell_logic: scripts/harness now consumes selected rules from this file for lane-based entry, next-phase mapping, gate checks, artifact timing, and workflow-type-specific scaffold template selection, but it still keeps part of the workflow logic in shell code.
+  contract_role: This file is the installed machine-readable definition for adapters, docs, and future runtime migration work.
+  not_yet_data_driven: The MVP runtime is not yet fully data-driven by workflow-definition.yml.

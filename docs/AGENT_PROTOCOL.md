@@ -67,37 +67,38 @@ The operating contract for work that remains in `freestyle` lives in
 `.harness/freestyle-mode.yml`. The prose guide lives in
 `docs/FREESTYLE_MODE.md`.
 
+The explicit workflow trigger conventions for raw prompts live in
+`.harness/workflow-triggers.yml`. The prose guide lives in
+`docs/WORKFLOW_TRIGGERS.md`.
+
 The machine-readable selection contract lives in
 `.harness/workflow-selection.yml`. The prose selection guide lives in
 `docs/WORKFLOW_SELECTION.md`.
 
-The current active tracked workflow is the feature ticket flow:
+The machine-readable shared tracked execution rules now live in:
 
-```text
-ticket id
-  -> analysis
-  -> proposal
-  -> proposal approval
-  -> implementation plan
-  -> plan approval
-  -> implementation
-  -> code review approval
-  -> targeted validation
-  -> optional UAT mapping
-```
+- `.harness/workflow-definition.yml`
+- `docs/WORKFLOW_DEFINITION.md`
 
-Lane-specific shortcuts are allowed only when the tracked ticket metadata says
-so:
+The current active tracked workflows are feature and bug-fix. Both bind onto
+the shared tracked runtime defined above.
 
-- `tiny` and `normal-fast` may skip `analysis` and start from `proposal`
-- `normal` and `high-risk` still start from `analysis`
-- `high-risk` still requires the full gated flow
+Tracked bug-fix flow uses the same durable phase order but applies the
+bug-oriented contract in `.harness/bug-fix-workflow.yml` and
+`docs/BUG_FIX_WORKFLOW.md` for reproduction context, expected vs actual
+behavior, root-cause notes, regression scope, and fix validation.
+
+Durable review inside tracked workflows uses `.harness/review-workflow.yml`
+and `docs/REVIEW_WORKFLOW.md` for the required `review.md` artifact before
+`code_review_approved`.
 
 Intake classification, raw prompt routing, freestyle promotion, freestyle mode,
 workflow selection, risk lanes, and hard escalation rules live in
 `docs/FEATURE_INTAKE.md`, `docs/RAW_PROMPT_ROUTER.md`,
-`docs/FREESTYLE_PROMOTION.md`, `docs/FREESTYLE_MODE.md`, and
-`docs/WORKFLOW_SELECTION.md`.
+`docs/FREESTYLE_PROMOTION.md`, `docs/FREESTYLE_MODE.md`,
+`docs/WORKFLOW_TRIGGERS.md`, `docs/WORKFLOW_SELECTION.md`,
+`docs/WORKFLOW_DEFINITION.md`, `docs/BUG_FIX_WORKFLOW.md`, and
+`docs/REVIEW_WORKFLOW.md`.
 
 At raw-requirement intake and during analysis, agents must ask follow-up
 questions when important concepts, business rules, or scope statements remain
@@ -127,6 +128,10 @@ Use `scripts/harness ticket start-phase ...` to scaffold the next legal ticket
 artifact instead of copying templates by hand. Use `ticket repair` only for
 explicit recovery work when tracked docs and runtime state have drifted.
 
+Do not reverse-engineer shared phase order, artifact requirements, lane
+shortcuts, or gate-to-status mapping from prose when `.harness/workflow-definition.yml`
+already answers the question directly.
+
 ## Phase Ownership
 
 Each phase owns a narrow output:
@@ -140,7 +145,8 @@ Each phase owns a narrow output:
 - Planning writes or updates only `implementation-plan.md`.
 - Implementation changes product code, product docs, and immediate validation
   notes for the approved slice only.
-- Review produces findings first and does not fix code by default.
+- Review writes or updates only `review.md`, produces findings first, and does
+  not fix code by default.
 - Validation updates proof and `validation.md`.
 - UAT may write `uat.md` and test assets after code review approval when the
   repo or team wants an explicit acceptance pass.

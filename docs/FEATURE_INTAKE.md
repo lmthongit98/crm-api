@@ -43,6 +43,15 @@ into tracked workflow.
 If `direct-work` remains legal, use `.harness/freestyle-mode.yml` and
 `docs/FREESTYLE_MODE.md` to govern the lightweight execution path.
 
+If the raw prompt contains explicit trigger conventions such as `$freestyle`,
+`$feature`, `$bugfix`, `$review`, or `$workflow`, apply
+`.harness/workflow-triggers.yml` and `docs/WORKFLOW_TRIGGERS.md` before
+falling back to ordinary prose inference.
+
+If tracked workflow type is `bug-fix`, use `.harness/bug-fix-workflow.yml` and
+`docs/BUG_FIX_WORKFLOW.md` for the bug-oriented artifact and gate
+expectations.
+
 ## Input Types
 
 | Type | Use when | Typical artifact |
@@ -64,10 +73,10 @@ Every tracked ticket should record:
 - `Lane`: how much workflow ceremony the ticket needs
 
 Lane selection is not the same thing as workflow type selection. In the current
-MVP, only the tracked `feature` workflow has a fully active artifact and gate
-contract. Other workflow types may still be selected and documented as planned
-routing targets without implying that their dedicated runtime behavior already
-exists.
+MVP, tracked `feature` and tracked `bug-fix` both have active portable
+contracts. `investigation` and `review` may still be selected and documented
+as planned routing targets without implying that their dedicated runtime
+behavior already exists.
 
 The harness should choose lane from risk, scope, and clarity together. Do not
 use "not high-risk" by itself as permission to skip workflow phases.

@@ -11,6 +11,10 @@ The machine-readable promotion criteria used by that router are:
 
 - `.harness/freestyle-promotion.yml`
 
+The machine-readable workflow trigger conventions used by that router are:
+
+- `.harness/workflow-triggers.yml`
+
 The operating contract for work that stays in `freestyle` is:
 
 - `.harness/freestyle-mode.yml`
@@ -29,6 +33,10 @@ full workflow engine for every request type.
 
 The router should apply the explicit promotion criteria before returning
 `direct-work` or a tracked route.
+
+When the prompt contains an explicit workflow trigger such as `$freestyle`,
+`$feature`, `$bugfix`, `$review`, or `$workflow`, the router should treat that
+as a strong routing signal before falling back to ordinary prose inference.
 
 If it returns `direct-work`, the next step should follow
 `docs/FREESTYLE_MODE.md`.
@@ -60,3 +68,6 @@ Adapters should report:
 This router standardizes output shape and route labels. Promotion thresholds
 come from `docs/FREESTYLE_PROMOTION.md` and
 `.harness/freestyle-promotion.yml`.
+
+Explicit trigger conventions come from `docs/WORKFLOW_TRIGGERS.md` and
+`.harness/workflow-triggers.yml`.

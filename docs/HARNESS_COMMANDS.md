@@ -6,6 +6,13 @@ This document describes the current installed runtime surface for
 Tracked markdown under `docs/` remains the source of truth. `harness.db` is a
 local operational cache used by the runtime commands below.
 
+For shared tracked execution rules such as canonical statuses, next-phase
+mapping, approval gates, artifact requirements, lane shortcuts, and shared
+workflow-type bindings, use:
+
+- `.harness/workflow-definition.yml`
+- `docs/WORKFLOW_DEFINITION.md`
+
 ## Usage
 
 ```bash
@@ -140,10 +147,8 @@ Output includes:
 - blockers
 - a recommended next command
 
-Lane behavior:
-
-- `tiny` and `normal-fast` start from `proposal`
-- other lanes start from `analysis`
+The authoritative lane-specific next-phase rules now live in
+`.harness/workflow-definition.yml`.
 
 ### `scripts/harness ticket check-phase --id <ticket-id>`
 
@@ -162,14 +167,27 @@ Supported scaffoldable phases:
 - `proposal`
 - `implementation-plan`
 - `validation`
+- `review`
 - `uat`
+
+The authoritative shared phase catalog now lives in
+`.harness/workflow-definition.yml`.
 
 Behavior:
 
 - enforces the next legal phase from current runtime status
 - creates `docs/work/<ticket-id>-*/` if missing
-- copies the matching template from `docs/templates/ticket-work/`
+- copies the matching template path resolved from
+  `.harness/workflow-definition.yml`
+- workflow-type bindings in `.harness/workflow-definition.yml` currently map
+  `feature` to `docs/templates/ticket-work/*` and `bugfix` to
+  `docs/templates/bug-fix-work/*` for bug-oriented scaffold phases
 - writes the ticket ID into the scaffolded file
+
+Review-specific runtime expectations are defined by:
+
+- `.harness/workflow-definition.yml`
+- `.harness/review-workflow.yml`
 
 Notes:
 
@@ -190,6 +208,9 @@ Supported target statuses:
 - `implementation_complete`
 - `uat_generated`
 - `blocked`
+
+The authoritative shared tracked status list and next-phase mapping now live
+in `.harness/workflow-definition.yml`.
 
 Behavior:
 
@@ -220,6 +241,9 @@ Supported transitions:
 - `plan_pending_approval -> plan_approved`
 - `implementation_complete -> code_review_approved`
 
+The authoritative approval-gate mapping now lives in
+`.harness/workflow-definition.yml`.
+
 Behavior:
 
 - writes the matching approval timestamp
@@ -234,6 +258,7 @@ Checks one ticket for runtime consistency.
 
 Validation includes:
 
+- tracked ticket metadata declares explicit valid `Type` and `Lane` values
 - required tracked ticket file exists
 - parent/child relationship metadata is coherent
 - expected work packet files exist for the current status
@@ -241,6 +266,9 @@ Validation includes:
 - status lines and approval timestamps are consistent
 - validation and UAT files no longer contain placeholder content where the
   current status requires real proof
+
+The authoritative shared artifact requirements now live in
+`.harness/workflow-definition.yml`.
 
 ### `scripts/harness doctor`
 
