@@ -273,6 +273,82 @@ workflow_definition_nested_value() {
   ' "$file"
 }
 
+workflow_definition_status_manual_update_scalar() {
+  local status="$1" key="$2" file
+  file="$(workflow_definition_path)"
+  [ -f "$file" ] || return 1
+  awk -v status="$status" -v key="$key" '
+    /^statuses:$/ {in_statuses=1; next}
+    in_statuses && /^[^[:space:]]/ {in_statuses=0}
+    in_statuses && $0 ~ ("^  " status ":$") {in_status=1; next}
+    in_statuses && in_status && /^  [a-zA-Z0-9_-]+:/ {in_status=0}
+    in_statuses && in_status && /^    manual_update:$/ {in_update=1; next}
+    in_statuses && in_status && in_update && /^      [a-zA-Z0-9_-]+:/ {
+      if ($0 ~ ("^      " key ":")) {
+        value=$0
+        sub("^      " key ":[[:space:]]*", "", value)
+        print value
+        exit
+      }
+      if ($0 !~ /^      allowed_from_for_lanes:$/) {
+        in_lanes=0
+      }
+    }
+  ' "$file"
+}
+
+workflow_definition_status_manual_update_list_contains() {
+  local status="$1" key="$2" value="$3" file
+  file="$(workflow_definition_path)"
+  [ -f "$file" ] || return 1
+  awk -v status="$status" -v key="$key" -v value="$value" '
+    /^statuses:$/ {in_statuses=1; next}
+    in_statuses && /^[^[:space:]]/ {in_statuses=0}
+    in_statuses && $0 ~ ("^  " status ":$") {in_status=1; next}
+    in_statuses && in_status && /^  [a-zA-Z0-9_-]+:/ {in_status=0}
+    in_statuses && in_status && /^    manual_update:$/ {in_update=1; next}
+    in_statuses && in_status && in_update && $0 ~ ("^      " key ":$") {in_key=1; next}
+    in_statuses && in_status && in_key && /^      [a-zA-Z0-9_-]+:/ {in_key=0}
+    in_statuses && in_status && in_key && /^        - / {
+      item=$0
+      sub(/^        - /, "", item)
+      gsub(/[[:space:]]+$/, "", item)
+      if (item == value) {
+        found=1
+        exit
+      }
+    }
+    END { exit(found ? 0 : 1) }
+  ' "$file"
+}
+
+workflow_definition_status_manual_update_lane_list_contains() {
+  local status="$1" lane="$2" value="$3" file
+  file="$(workflow_definition_path)"
+  [ -f "$file" ] || return 1
+  awk -v status="$status" -v lane="$lane" -v value="$value" '
+    /^statuses:$/ {in_statuses=1; next}
+    in_statuses && /^[^[:space:]]/ {in_statuses=0}
+    in_statuses && $0 ~ ("^  " status ":$") {in_status=1; next}
+    in_statuses && in_status && /^  [a-zA-Z0-9_-]+:/ {in_status=0}
+    in_statuses && in_status && /^    manual_update:$/ {in_update=1; next}
+    in_statuses && in_status && in_update && /^      allowed_from_for_lanes:$/ {in_lanes=1; next}
+    in_statuses && in_status && in_update && in_lanes && /^      [a-zA-Z0-9_-]+:/ {in_lanes=0}
+    in_statuses && in_status && in_update && in_lanes && $0 ~ ("^        " lane ":$") {in_lane=1; next}
+    in_statuses && in_status && in_update && in_lanes && in_lane && /^        [a-zA-Z0-9_-]+:/ {in_lane=0}
+    in_statuses && in_status && in_update && in_lanes && in_lane && /^          - / {
+      item=$0
+      sub(/^          - /, "", item)
+      gsub(/[[:space:]]+$/, "", item)
+      if (item == value) {
+        found=1
+        exit
+      }
+    }
+    END { exit(found ? 0 : 1) }
+  ' "$file"
+}
+
 workflow_definition_artifact_list_contains() {
   local artifact="$1" key="$2" value="$3" file
   file="$(workflow_definition_path)"
@@ -339,6 +415,36 @@ workflow_definition_gate_allowed_when_status() {
 
 workflow_definition_artifact_required_from_status() {
   workflow_definition_artifact_list_contains "$1" "required_from_status" "$2"
+}
+
+workflow_definition_status_allows_manual_update_from() {
+  local status="$1" lane="$2" current="$3" normalized_lane="${lane//_/-}" allowed_from=""
+  if workflow_definition_status_manual_update_lane_list_contains "$status" "$normalized_lane" "$current"; then
+    return 0
+  fi
+  allowed_from="$(workflow_definition_status_manual_update_scalar "$status" "allowed_from" || true)"
+  [ "$allowed_from" = "any" ] && return 0
+  workflow_definition_status_manual_update_list_contains "$status" "allowed_from" "$current"
+}
+
+workflow_definition_status_required_update_artifact() {
+  workflow_definition_status_manual_update_scalar "$1" "required_artifact"
+}
+
+workflow_definition_status_required_update_artifact_status() {
+  workflow_definition_status_manual_update_scalar "$1" "required_artifact_status"
+}
+
+workflow_definition_status_requires_parent_role() {
+  [ "$(workflow_definition_status_manual_update_scalar "$1" "requires_parent_role" || true)" = "true" ]
+}
+
+workflow_definition_status_requires_child_tickets() {
+  [ "$(workflow_definition_status_manual_update_scalar "$1" "requires_child_tickets" || true)" = "true" ]
+}
+
+workflow_definition_status_disallows_parent_role() {
+  [ "$(workflow_definition_status_manual_update_scalar "$1" "disallow_parent_role" || true)" = "true" ]
 }
 
 workflow_definition_binding_list_contains() {
@@ -911,37 +1017,8 @@ verify_ticket_internal() {
   return $issues
 }
 
-required_state_for_status() {
-  local target_status="$1" lane="$2"
-  case "$target_status" in
-    proposal_pending_approval)
-      case "$lane" in
-        tiny|normal_fast) printf 'ticket_loaded|analysis_complete' ;;
-        *) printf 'analysis_complete' ;;
-      esac
-      ;;
-    decomposed) printf 'proposal_pending_approval|proposal_approved' ;;
-    plan_pending_approval) printf 'proposal_approved' ;;
-    implementation_complete) printf 'plan_approved' ;;
-    uat_generated) printf 'code_review_approved' ;;
-    blocked) printf 'any' ;;
-    *) printf '' ;;
-  esac
-}
-
-status_requires_artifact() {
-  case "$1" in
-    proposal_pending_approval) printf 'proposal.md' ;;
-    decomposed) printf 'proposal.md' ;;
-    plan_pending_approval) printf 'implementation-plan.md' ;;
-    implementation_complete) printf 'validation.md' ;;
-    uat_generated) printf 'uat.md' ;;
-    *) printf '' ;;
-  esac
-}
-
 enforce_status_transition() {
-  local id="$1" current="$2" next="$3" work_dir="$4" lane="$5" required_current required_file proposal_status plan_status role child_ids
+  local id="$1" current="$2" next="$3" work_dir="$4" lane="$5" required_file proposal_status plan_status role child_ids required_status
   case "$next" in
     proposal_pending_approval|decomposed|plan_pending_approval|implementation_complete|uat_generated|blocked) ;;
     *) die "ticket update only supports proposal_pending_approval, decomposed, plan_pending_approval, implementation_complete, uat_generated, or blocked. Use ticket approve or ticket repair for other transitions." ;;
@@ -955,22 +1032,14 @@ enforce_status_transition() {
     return 0
   fi
 
-  required_current="$(required_state_for_status "$next" "$lane")"
-  if [ "$required_current" != "any" ]; then
-    case "$required_current" in
-      *'|'*)
-        case "|$required_current|" in
-          *"|$current|"*) ;;
-          *) die "ticket update: illegal transition from $current to $next for lane $lane" ;;
-        esac
-        ;;
-      *)
-        [ "$current" = "$required_current" ] || die "ticket update: illegal transition from $current to $next for lane $lane"
-        ;;
-    esac
+  if workflow_definition_exists; then
+    workflow_definition_status_allows_manual_update_from "$next" "$lane" "$current" \
+      || die "ticket update: illegal transition from $current to $next for lane $lane"
+    required_file="$(workflow_definition_status_required_update_artifact "$next" || true)"
+  else
+    die "ticket update: workflow-definition.yml is required for manual status transitions"
   fi
 
-  required_file="$(status_requires_artifact "$next")"
   [ -n "$required_file" ] || die "ticket update: no artifact rule for $next"
   [ -n "$work_dir" ] || die "ticket update: missing work packet under docs/work/${id}-*"
   [ -f "$work_dir/$required_file" ] || die "ticket update: missing required artifact $required_file for $next"
@@ -980,27 +1049,29 @@ enforce_status_transition() {
 
   case "$next" in
     proposal_pending_approval)
+      required_status="$(workflow_definition_status_required_update_artifact_status "$next" || true)"
       proposal_status="$(extract_status_line "$work_dir/proposal.md")"
       [ "$(extract_ticket_id_line "$work_dir/proposal.md")" = "$id" ] || die "ticket update: proposal.md ticket id must be $id"
-      [ "$proposal_status" = "proposal_pending_approval" ] || die "ticket update: proposal.md status must be proposal_pending_approval before status update"
+      [ "$proposal_status" = "${required_status:-proposal_pending_approval}" ] || die "ticket update: proposal.md status must be ${required_status:-proposal_pending_approval} before status update"
       ;;
     decomposed)
-      [ "$role" = "parent" ] || die "ticket update: decomposed status requires Relationship: parent in docs/tickets/$id.md"
-      [ -n "$child_ids" ] || die "ticket update: decomposed status requires at least one child ticket"
+      workflow_definition_status_requires_parent_role "$next" && [ "$role" = "parent" ] || die "ticket update: decomposed status requires Relationship: parent in docs/tickets/$id.md"
+      workflow_definition_status_requires_child_tickets "$next" && [ -n "$child_ids" ] || die "ticket update: decomposed status requires at least one child ticket"
       [ "$(extract_ticket_id_line "$work_dir/proposal.md")" = "$id" ] || die "ticket update: proposal.md ticket id must be $id"
       ;;
     plan_pending_approval)
-      [ "$role" != "parent" ] || die "ticket update: parent tickets cannot move to plan_pending_approval"
+      workflow_definition_status_disallows_parent_role "$next" && [ "$role" != "parent" ] || die "ticket update: parent tickets cannot move to plan_pending_approval"
+      required_status="$(workflow_definition_status_required_update_artifact_status "$next" || true)"
       plan_status="$(extract_status_line "$work_dir/implementation-plan.md")"
       [ "$(extract_ticket_id_line "$work_dir/implementation-plan.md")" = "$id" ] || die "ticket update: implementation-plan.md ticket id must be $id"
-      [ "$plan_status" = "plan_pending_approval" ] || die "ticket update: implementation-plan.md status must be plan_pending_approval before status update"
+      [ "$plan_status" = "${required_status:-plan_pending_approval}" ] || die "ticket update: implementation-plan.md status must be ${required_status:-plan_pending_approval} before status update"
       ;;
     implementation_complete)
-      [ "$role" != "parent" ] || die "ticket update: parent tickets cannot move to implementation_complete"
+      workflow_definition_status_disallows_parent_role "$next" && [ "$role" != "parent" ] || die "ticket update: parent tickets cannot move to implementation_complete"
       [ "$(extract_ticket_id_line "$work_dir/validation.md")" = "$id" ] || die "ticket update: validation.md ticket id must be $id"
       ;;
     uat_generated)
-      [ "$role" != "parent" ] || die "ticket update: parent tickets cannot move to uat_generated"
+      workflow_definition_status_disallows_parent_role "$next" && [ "$role" != "parent" ] || die "ticket update: parent tickets cannot move to uat_generated"
       [ "$(extract_ticket_id_line "$work_dir/uat.md")" = "$id" ] || die "ticket update: uat.md ticket id must be $id"
       ;;
   esac

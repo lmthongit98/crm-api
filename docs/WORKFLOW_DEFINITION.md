@@ -14,6 +14,7 @@ Use this contract to answer:
 - which approval gates are valid
 - which lanes may skip `analysis`
 - which workflow types bind onto the shared runtime
+- which `ticket update` transitions are legal for shared tracked statuses
 
 ## Current Scope
 
@@ -33,8 +34,8 @@ This file does not mean the installed runtime is already fully data-driven.
 Today:
 
 - `scripts/harness` now consumes selected rules from this file for lane-based
-  entry, next-phase mapping, gate checks, artifact timing, and workflow-type
-  scaffold template selection
+  entry, next-phase mapping, gate checks, artifact timing, manual ticket-update
+  transitions, and workflow-type scaffold template selection
 - some workflow behavior still remains in shell logic
 - adapters and future runtime work should prefer this file over reverse
   engineering prose docs

@@ -212,7 +212,8 @@ in `.harness/workflow-definition.yml`.
 
 Behavior:
 
-- validates legal transitions from the current status
+- validates legal transitions from the current status using the shared
+  `manual_update` rules in `.harness/workflow-definition.yml`
 - validates required artifacts such as `proposal.md`,
   `implementation-plan.md`, `validation.md`, or `uat.md`
 - syncs status lines back into scaffolded work packet files
