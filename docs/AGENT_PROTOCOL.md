@@ -134,7 +134,11 @@ already answers the question directly.
 
 ## Phase Ownership
 
-Each phase owns a narrow output:
+Each phase owns a narrow output within the shared tracked workflow. Standard
+lanes use the default tracked artifacts below. High-risk remains the same
+tracked workflow and gate sequence, but it may satisfy analysis, planning, and
+validation through the high-risk artifact set defined by
+`docs/templates/high-risk-work/` and the repo's lane guidance.
 
 - Analysis writes or updates only `analysis.md`.
 - Analysis must stop and ask the user when key terms, rules, or expected
@@ -150,6 +154,14 @@ Each phase owns a narrow output:
 - Validation updates proof and `validation.md`.
 - UAT may write `uat.md` and test assets after code review approval when the
   repo or team wants an explicit acceptance pass.
+
+For high-risk tracked work:
+
+- keep the same shared tracked runtime, approval gates, and status progression
+- use the repo's high-risk artifact set where lane guidance requires files such
+  as `overview.md`, `design.md`, `execplan.md`, and `validation.md`
+- do not invent a separate high-risk workflow type unless the machine-readable
+  contract explicitly introduces one
 
 If one ticket is too broad for one safe review, keep it as a parent ticket and
 create child tickets with independently reviewable outcomes. Prefer each child
