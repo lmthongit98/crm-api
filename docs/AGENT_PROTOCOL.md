@@ -163,6 +163,42 @@ For high-risk tracked work:
 - do not invent a separate high-risk workflow type unless the machine-readable
   contract explicitly introduces one
 
+## Live Data And Database Checks
+
+When an agent has access to MCP tools, database clients, or similar live-data
+surfaces, treat them as optional helpers for read-only verification. They do
+not replace tracked artifacts, runtime gate checks, or repo truth.
+
+- Prefer tracked docs, local code inspection, and repo-owned schemas first.
+- Use live database checks only when the current phase needs schema or state
+  confirmation that repo-local truth cannot answer reliably.
+- Default to read-only operations such as schema introspection, bounded row
+  lookups, limited aggregates, and small sample queries.
+- Require an explicit human ask before any write, mutation, backfill, admin, or
+  destructive operation through an agent-accessible database tool.
+- Keep checks narrowly scoped to the ticket's domain slice and report the
+  reason, entities inspected, and conclusion in the phase outcome.
+
+Phase ownership for live database checks:
+
+- Raw intake: avoid live database access unless the user explicitly needs
+  current environment state to classify the request.
+- Analysis: allowed for read-only confirmation of schema, record shape, or
+  current state when those facts materially affect scope.
+- Decomposition: avoid live database access unless entity or table boundaries
+  are needed to split the ticket safely.
+- Proposal and plan: use only when feasibility depends on confirming current
+  data constraints, migration preconditions, or integration boundaries.
+- Implementation: primary phase for live database checks; use them to confirm
+  migrations, persistence behavior, state transitions, and data-side effects of
+  the implemented slice.
+- Review: allowed for independent read-only verification of persistence and
+  migration claims.
+- Validation or optional UAT: allowed when acceptance evidence requires backend
+  state confirmation.
+- Routing-only adapters or orchestration steps should not perform live database
+  checks directly; they should route to the owning phase instead.
+
 If one ticket is too broad for one safe review, keep it as a parent ticket and
 create child tickets with independently reviewable outcomes. Prefer each child
 ticket to cover one REST API, one database table or domain entity, or one

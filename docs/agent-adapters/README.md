@@ -28,6 +28,9 @@ The Codex adapter should:
   runtime guidance and read-only checks.
 - Run `scripts/harness ticket approve` only after explicit human approval.
 - Keep each skill scoped to its phase output.
+- Follow the shared live-data and database-check policy in
+  `docs/AGENT_PROTOCOL.md` instead of redefining phase ownership inside Codex
+  skills.
 
 ## Other Agents
 
@@ -40,3 +43,12 @@ For another agent, create adapter instructions that map the same phases:
 - Implementation -> approved product slice only
 - Validation -> proof and `validation.md`
 - Optional UAT -> optional UAT mapping after code review approval
+
+All adapters should also inherit the shared live-data policy from
+`docs/AGENT_PROTOCOL.md`:
+
+- keep database or other live-environment checks read-only by default
+- use them only when repo-local truth is insufficient for the current phase
+- treat implementation as the primary owner, with narrower use in analysis,
+  review, validation, and optional UAT
+- keep routing-only adapter steps out of direct live database inspection

@@ -15,6 +15,57 @@ sql_escape() { printf '%s' "$1" | sed "s/'/''/g"; }
 sql_literal() { printf "'%s'" "$(sql_escape "$1")"; }
 sql_or_null() { [ -n "${1:-}" ] && sql_literal "$1" || printf 'NULL'; }
 
+upsert_ticket_workflow() {
+  local id="$1" ticket_path="$2" role="$3" parent_id="$4" status="$5" notes="$6"
+  local proposal_ts_sql="${7:-NULL}" plan_ts_sql="${8:-NULL}" code_review_ts_sql="${9:-NULL}"
+
+  sql "UPDATE ticket_workflow
+       SET ticket_path=$(sql_literal "$ticket_path"),
+           ticket_role=$(sql_literal "$role"),
+           parent_ticket_id=$(sql_or_null "$parent_id"),
+           status=$(sql_literal "$status"),
+           proposal_approved_at=CASE
+             WHEN $proposal_ts_sql IS NOT NULL THEN COALESCE(proposal_approved_at, $proposal_ts_sql)
+             ELSE NULL
+           END,
+           plan_approved_at=CASE
+             WHEN $plan_ts_sql IS NOT NULL THEN COALESCE(plan_approved_at, $plan_ts_sql)
+             ELSE NULL
+           END,
+           code_review_approved_at=CASE
+             WHEN $code_review_ts_sql IS NOT NULL THEN COALESCE(code_review_approved_at, $code_review_ts_sql)
+             ELSE NULL
+           END,
+           notes=$(sql_literal "$notes"),
+           updated_at=datetime('now')
+       WHERE ticket_id=$(sql_literal "$id");"
+
+  sql "INSERT INTO ticket_workflow (ticket_id, ticket_path, ticket_role, parent_ticket_id, status, proposal_approved_at, plan_approved_at, code_review_approved_at, notes)
+       SELECT $(sql_literal "$id"), $(sql_literal "$ticket_path"), $(sql_literal "$role"), $(sql_or_null "$parent_id"), $(sql_literal "$status"), $proposal_ts_sql, $plan_ts_sql, $code_review_ts_sql, $(sql_literal "$notes")
+       WHERE NOT EXISTS (
+         SELECT 1 FROM ticket_workflow WHERE ticket_id=$(sql_literal "$id")
+       );"
+}
+
+upsert_decision() {
+  local id="$1" title="$2" status="$3" doc_path="$4" verify_cmd="$5" predicted_impact="$6" notes="$7"
+
+  sql "UPDATE decision
+       SET title=$(sql_literal "$title"),
+           status=$(sql_literal "$status"),
+           doc_path=$(sql_or_null "$doc_path"),
+           verify_command=$(sql_or_null "$verify_cmd"),
+           predicted_impact=$(sql_or_null "$predicted_impact"),
+           notes=$(sql_or_null "$notes")
+       WHERE id=$(sql_literal "$id");"
+
+  sql "INSERT INTO decision (id, title, status, doc_path, verify_command, predicted_impact, notes)
+       SELECT $(sql_literal "$id"), $(sql_literal "$title"), $(sql_literal "$status"), $(sql_or_null "$doc_path"), $(sql_or_null "$verify_cmd"), $(sql_or_null "$predicted_impact"), $(sql_or_null "$notes")
+       WHERE NOT EXISTS (
+         SELECT 1 FROM decision WHERE id=$(sql_literal "$id")
+       );"
+}
+
 usage() {
   cat <<'EOF'
 Usage: scripts/harness <command> [args]
@@ -1298,14 +1349,13 @@ cmd_ticket() {
       parent_id="$(ticket_parent_id "$id" || true)"
       work_dir="$(work_dir_for_ticket "$id" || true)"
       status="$(ticket_status_from_files "$id" "$work_dir")"
-      sql "INSERT INTO ticket_workflow (ticket_id, ticket_path, ticket_role, parent_ticket_id, status, notes)
-           VALUES ($(sql_literal "$id"), $(sql_literal "docs/tickets/$id.md"), $(sql_literal "$role"), $(sql_or_null "$parent_id"), $(sql_literal "$status"), 'Loaded from tracked docs')
-           ON CONFLICT(ticket_id) DO UPDATE SET
-             ticket_path=excluded.ticket_path,
-             ticket_role=excluded.ticket_role,
-             parent_ticket_id=excluded.parent_ticket_id,
-             status=excluded.status,
-             updated_at=datetime('now');"
+      upsert_ticket_workflow \
+        "$id" \
+        "docs/tickets/$id.md" \
+        "$role" \
+        "$parent_id" \
+        "$status" \
+        "Loaded from tracked docs"
       info "Ticket $id loaded from docs/tickets/$id.md."
       ;;
     status)
@@ -1462,9 +1512,14 @@ import_decisions() {
     title="$(sed -n '1s/^# //p' "$file")"
     status="$(awk '/^## Status/{getline; getline; print; exit}' "$file" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z]+//g')"
     case "$status" in accepted|proposed|superseded|rejected) ;; *) status="proposed" ;; esac
-    sql "INSERT INTO decision (id, title, status, doc_path, notes)
-         VALUES ($(sql_literal "$id"), $(sql_literal "$title"), $(sql_literal "$status"), $(sql_literal "docs/decisions/$(basename "$file")"), 'Imported from docs/decisions.')
-         ON CONFLICT(id) DO UPDATE SET title=excluded.title, status=excluded.status, doc_path=excluded.doc_path;"
+    upsert_decision \
+      "$id" \
+      "$title" \
+      "$status" \
+      "docs/decisions/$(basename "$file")" \
+      "" \
+      "" \
+      "Imported from docs/decisions."
   done
 }
 
@@ -1491,17 +1546,16 @@ import_tracked_tickets() {
     if status_for_code_review_timestamp "$status"; then
       code_review_ts_sql="datetime('now')"
     fi
-    sql "INSERT INTO ticket_workflow (ticket_id, ticket_path, ticket_role, parent_ticket_id, status, proposal_approved_at, plan_approved_at, code_review_approved_at, notes)
-         VALUES ($(sql_literal "$id"), $(sql_literal "docs/tickets/$id.md"), $(sql_literal "$role"), $(sql_or_null "$parent_id"), $(sql_literal "$status"), $proposal_ts_sql, $plan_ts_sql, $code_review_ts_sql, 'Imported from tracked docs by harness import tracked.')
-         ON CONFLICT(ticket_id) DO UPDATE SET
-           ticket_path=excluded.ticket_path,
-           ticket_role=excluded.ticket_role,
-           parent_ticket_id=excluded.parent_ticket_id,
-           status=excluded.status,
-           proposal_approved_at=CASE WHEN $proposal_ts_sql IS NOT NULL THEN COALESCE(ticket_workflow.proposal_approved_at, $proposal_ts_sql) ELSE NULL END,
-           plan_approved_at=CASE WHEN $plan_ts_sql IS NOT NULL THEN COALESCE(ticket_workflow.plan_approved_at, $plan_ts_sql) ELSE NULL END,
-           code_review_approved_at=CASE WHEN $code_review_ts_sql IS NOT NULL THEN COALESCE(ticket_workflow.code_review_approved_at, $code_review_ts_sql) ELSE NULL END,
-           updated_at=datetime('now');"
+    upsert_ticket_workflow \
+      "$id" \
+      "docs/tickets/$id.md" \
+      "$role" \
+      "$parent_id" \
+      "$status" \
+      "Imported from tracked docs by harness import tracked." \
+      "$proposal_ts_sql" \
+      "$plan_ts_sql" \
+      "$code_review_ts_sql"
   done
 }
 
@@ -1581,9 +1635,7 @@ cmd_decision() {
       done
       [ -n "$id" ] || die "decision add: --id is required"
       [ -n "$title" ] || die "decision add: --title is required"
-      sql "INSERT INTO decision (id, title, status, doc_path, verify_command, predicted_impact, notes)
-           VALUES ($(sql_literal "$id"), $(sql_literal "$title"), $(sql_literal "$status"), $(sql_or_null "$doc"), $(sql_or_null "$verify"), $(sql_or_null "$impact"), $(sql_or_null "$notes"))
-           ON CONFLICT(id) DO UPDATE SET title=excluded.title, status=excluded.status, doc_path=excluded.doc_path, verify_command=excluded.verify_command, predicted_impact=excluded.predicted_impact, notes=excluded.notes;"
+      upsert_decision "$id" "$title" "$status" "$doc" "$verify" "$impact" "$notes"
       info "Decision $id recorded."
       ;;
     verify)

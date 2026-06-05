@@ -55,6 +55,9 @@ continuing to the next gate.
   explicitly asks to approve a gate.
 - `review-agent` and `uat-agent` must only be invoked through `spawn_agent`.
 
+Codex skills should inherit the shared live-data and database-check policy from
+`docs/AGENT_PROTOCOL.md` rather than redefining separate phase ownership here.
+
 ## Workflow Map
 
 | Phase | Primary execution | Gate requirement before use | Main outputs | Stop conditions |
@@ -103,6 +106,7 @@ working days.
   - `scripts/harness ticket status --id <ticketId>`
   - `scripts/harness query tickets`
   - when asking follow-up questions, include suggested answers the user can confirm or refine
+  - if repo truth is insufficient and schema or live-state facts materially affect scope, follow the shared read-only live-data policy in `docs/AGENT_PROTOCOL.md`
 - Decompose:
   - `scripts/harness ticket load --id <ticketId>`
   - `scripts/harness ticket next --id <ticketId>`
@@ -110,31 +114,37 @@ working days.
   - `scripts/harness ticket status --id <ticketId>`
   - `scripts/harness query tickets`
   - `scripts/harness ticket update --id <ticketId> --status decomposed`
+  - use live database checks only when entity or table boundaries are needed to split the ticket safely
 - Proposal:
   - `scripts/harness ticket next --id <ticketId>`
   - `scripts/harness ticket start-phase --id <ticketId> --phase proposal`
   - `scripts/harness ticket status --id <ticketId>`
   - `scripts/harness ticket update --id <ticketId> --status proposal_pending_approval`
+  - use live database checks only when proposal constraints depend on existing schema or data rules
 - Plan:
   - `scripts/harness ticket next --id <ticketId>`
   - `scripts/harness ticket start-phase --id <ticketId> --phase implementation-plan`
   - `scripts/harness ticket status --id <ticketId>`
   - `scripts/harness ticket gate --id <ticketId> --gate proposal`
   - `scripts/harness ticket update --id <ticketId> --status plan_pending_approval`
+  - use live database checks only when implementation sequencing depends on migration preconditions or current data boundaries
 - Implement:
   - `scripts/harness ticket next --id <ticketId>`
   - `scripts/harness ticket status --id <ticketId>`
   - project validation commands from `README.md`
+  - use read-only live database checks when validating schema changes, persistence behavior, or state transitions for the implemented slice
 - Review:
   - `scripts/harness ticket next --id <ticketId>`
   - `scripts/harness ticket status --id <ticketId>`
   - validation commands relevant to the changed slice
+  - use read-only live database checks for independent verification of persistence and migration claims when needed
 - Optional Robot UAT:
   - `scripts/harness ticket next --id <ticketId>`
   - `scripts/harness ticket start-phase --id <ticketId> --phase uat`
   - `scripts/harness ticket status --id <ticketId>`
   - `scripts/harness ticket gate --id <ticketId> --gate code_review`
   - `scripts/harness verify ticket --id <ticketId>`
+  - use live database checks only when acceptance evidence requires backend state confirmation
 
 ## Companion Skills
 
