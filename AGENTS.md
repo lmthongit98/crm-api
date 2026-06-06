@@ -35,9 +35,12 @@ Then read additional context only when the task needs it:
   changes, or boundary questions
 - `docs/CONTEXT_RULES.md` when deciding what else to read for the current
   phase, lane, or validation depth
+- `docs/agent-adapters/README.md` when the task changes adapter behavior,
+  adapter install shape, or the shared-versus-adapter boundary
 - `docs/HARNESS_SKILLS.md` only when the current agent uses the Codex adapter
   or when the task changes skill or specialist-agent behavior
 
 Use the stable repo-local entrypoint `scripts/harness` as the main operational
 tool. Tracked markdown is the portable source of truth. `harness.db` is a local
-cache that can be rebuilt from tracked docs.
+cache that can be rebuilt from tracked docs. Treat adapter files such as
+`.codex/*` as tool-specific overlays, not as the canonical workflow contract.

@@ -264,6 +264,11 @@ extract_ticket_id_line() {
 }
 
 status_rank() {
+  local rank=""
+  if workflow_definition_exists; then
+    rank="$(workflow_definition_status_scalar "$1" "rank" || true)"
+    [ -n "$rank" ] && { printf '%s' "$rank"; return 0; }
+  fi
   case "$1" in
     blocked) printf '0' ;;
     ticket_loaded) printf '1' ;;
@@ -321,6 +326,34 @@ workflow_definition_nested_value() {
       print value
       exit
     }
+  ' "$file"
+}
+
+workflow_definition_status_scalar() {
+  workflow_definition_nested_value "statuses" "$1" "$2"
+}
+
+workflow_definition_status_list_contains() {
+  local status="$1" key="$2" value="$3" file
+  file="$(workflow_definition_path)"
+  [ -f "$file" ] || return 1
+  awk -v status="$status" -v key="$key" -v value="$value" '
+    /^statuses:$/ {in_statuses=1; next}
+    in_statuses && /^[^[:space:]]/ {in_statuses=0}
+    in_statuses && $0 ~ ("^  " status ":$") {in_status=1; next}
+    in_statuses && in_status && /^  [a-zA-Z0-9_-]+:/ {in_status=0}
+    in_statuses && in_status && $0 ~ ("^    " key ":$") {in_key=1; next}
+    in_statuses && in_status && in_key && /^    [a-zA-Z0-9_-]+:/ {in_key=0}
+    in_statuses && in_status && in_key && /^      - / {
+      item=$0
+      sub(/^      - /, "", item)
+      gsub(/[[:space:]]+$/, "", item)
+      if (item == value) {
+        found=1
+        exit
+      }
+    }
+    END { exit(found ? 0 : 1) }
   ' "$file"
 }
 
@@ -424,6 +457,30 @@ workflow_definition_artifact_list_contains() {
   ' "$file"
 }
 
+workflow_definition_artifact_scalar() {
+  workflow_definition_nested_value "artifacts" "$1" "$2"
+}
+
+workflow_definition_artifact_map_value() {
+  local artifact="$1" map="$2" key="$3" file
+  file="$(workflow_definition_path)"
+  [ -f "$file" ] || return 1
+  awk -v artifact="$artifact" -v map="$map" -v key="$key" '
+    /^artifacts:$/ {in_artifacts=1; next}
+    in_artifacts && /^[^[:space:]]/ {in_artifacts=0}
+    in_artifacts && $0 ~ ("^  " artifact ":$") {in_artifact=1; next}
+    in_artifacts && in_artifact && /^  [a-zA-Z0-9_-]+:/ {in_artifact=0}
+    in_artifacts && in_artifact && $0 ~ ("^    " map ":$") {in_map=1; next}
+    in_artifacts && in_artifact && in_map && /^    [a-zA-Z0-9_-]+:/ {in_map=0}
+    in_artifacts && in_artifact && in_map && $0 ~ ("^      " key ":") {
+      value=$0
+      sub("^      " key ":[[:space:]]*", "", value)
+      print value
+      exit
+    }
+  ' "$file"
+}
+
 workflow_definition_next_phase() {
   local status="$1" lane="$2" next_phase=""
   next_phase="$(workflow_definition_nested_value "statuses" "$status" "next_phase" || true)"
@@ -498,6 +555,10 @@ workflow_definition_status_disallows_parent_role() {
   [ "$(workflow_definition_status_manual_update_scalar "$1" "disallow_parent_role" || true)" = "true" ]
 }
 
+workflow_definition_status_requires_approval_timestamp() {
+  workflow_definition_status_list_contains "$1" "required_approval_timestamps" "$2"
+}
+
 workflow_definition_binding_list_contains() {
   local binding="$1" key="$2" value="$3" file
   file="$(workflow_definition_path)"
@@ -564,6 +625,18 @@ workflow_definition_phase_template_for_ticket() {
   workflow_definition_binding_nested_value "$binding" "phase_template_files" "$phase"
 }
 
+workflow_definition_artifact_default_exists_status() {
+  workflow_definition_artifact_scalar "$1" "default_exists_status"
+}
+
+workflow_definition_artifact_status_line_advances_to() {
+  workflow_definition_artifact_map_value "$1" "status_line_advances_to" "$2"
+}
+
+workflow_definition_artifact_sync_status_line() {
+  workflow_definition_artifact_map_value "$1" "sync_status_line_from_ticket_status" "$2"
+}
+
 lane_requires_analysis() {
   if workflow_definition_exists; then
     if workflow_definition_lane_requires_analysis "$1"; then
@@ -616,24 +689,15 @@ ticket_gate_passes() {
 }
 
 status_for_gate_timestamp() {
-  case "$1" in
-    proposal_approved|plan_pending_approval|plan_approved|implementation_complete|code_review_approved|uat_generated) return 0 ;;
-    *) return 1 ;;
-  esac
+  workflow_definition_status_requires_approval_timestamp "$1" "proposal"
 }
 
 status_for_plan_timestamp() {
-  case "$1" in
-    plan_approved|implementation_complete|code_review_approved|uat_generated) return 0 ;;
-    *) return 1 ;;
-  esac
+  workflow_definition_status_requires_approval_timestamp "$1" "plan"
 }
 
 status_for_code_review_timestamp() {
-  case "$1" in
-    code_review_approved|uat_generated) return 0 ;;
-    *) return 1 ;;
-  esac
+  workflow_definition_status_requires_approval_timestamp "$1" "code_review"
 }
 
 template_path_for_phase() {
@@ -705,24 +769,32 @@ work_dir_from_status_or_default() {
 }
 
 ticket_status_from_files() {
-  local ticket_id="$1" work_dir="$2" status="ticket_loaded" status_line="" role="" child_ids=""
+  local ticket_id="$1" work_dir="$2" status="ticket_loaded" status_line="" role="" child_ids="" derived_status=""
   [ -n "$work_dir" ] || { printf '%s' "$status"; return 0; }
 
-  [ -f "$work_dir/analysis.md" ] && status="analysis_complete"
-  [ -f "$work_dir/proposal.md" ] && status="proposal_pending_approval"
-  status_line="$(extract_status_line "$work_dir/proposal.md")"
-  case "$status_line" in
-    proposal_approved) status="proposal_approved" ;;
-  esac
+  if [ -f "$work_dir/analysis.md" ]; then
+    derived_status="$(workflow_definition_artifact_default_exists_status "analysis" || true)"
+    status="${derived_status:-analysis_complete}"
+  fi
 
-  [ -f "$work_dir/implementation-plan.md" ] && status="plan_pending_approval"
+  if [ -f "$work_dir/proposal.md" ]; then
+    derived_status="$(workflow_definition_artifact_default_exists_status "proposal" || true)"
+    status="${derived_status:-proposal_pending_approval}"
+    status_line="$(extract_status_line "$work_dir/proposal.md")"
+    if [ -n "$status_line" ]; then
+      derived_status="$(workflow_definition_artifact_status_line_advances_to "proposal" "$status_line" || true)"
+      [ -n "$derived_status" ] && status="$derived_status"
+    fi
+  fi
+
   if [ -f "$work_dir/implementation-plan.md" ]; then
+    derived_status="$(workflow_definition_artifact_default_exists_status "implementation_plan" || true)"
+    status="${derived_status:-plan_pending_approval}"
     status_line="$(extract_status_line "$work_dir/implementation-plan.md")"
-    case "$status_line" in
-      plan_pending_approval|plan_approved|implementation_complete|code_review_approved|uat_generated)
-        status="$status_line"
-      ;;
-    esac
+    if [ -n "$status_line" ]; then
+      derived_status="$(workflow_definition_artifact_status_line_advances_to "implementation_plan" "$status_line" || true)"
+      [ -n "$derived_status" ] && status="$derived_status"
+    fi
   fi
 
   role="$(ticket_role "$ticket_id")"
@@ -771,32 +843,23 @@ ticket_effective_status() {
 }
 
 sync_ticket_work_status_files() {
-  local ticket_id="$1" ticket_status="$2" work_dir proposal_path plan_path proposal_status=""
+  local ticket_id="$1" ticket_status="$2" work_dir proposal_path plan_path proposal_status="" plan_status=""
   work_dir="$(work_dir_for_ticket "$ticket_id" || true)"
   [ -n "$work_dir" ] || return 0
 
   proposal_path="$work_dir/proposal.md"
   plan_path="$work_dir/implementation-plan.md"
 
-  case "$ticket_status" in
-    proposal_pending_approval) proposal_status="proposal_pending_approval" ;;
-    decomposed) proposal_status="decomposed" ;;
-    proposal_approved|plan_pending_approval|plan_approved|implementation_complete|code_review_approved|uat_generated)
-      proposal_status="proposal_approved"
-      ;;
-  esac
+  proposal_status="$(workflow_definition_artifact_sync_status_line "proposal" "$ticket_status" || true)"
 
   if [ -n "$proposal_status" ] && [ -f "$proposal_path" ]; then
     perl -0pi -e 's/^- Status: .*$/- Status: `'"$proposal_status"'`/m' "$proposal_path"
   fi
 
-  case "$ticket_status" in
-    plan_pending_approval|plan_approved|implementation_complete|code_review_approved|uat_generated)
-      if [ -f "$plan_path" ]; then
-        perl -0pi -e 's/^- Status: .*$/- Status: `'"$ticket_status"'`/m' "$plan_path"
-      fi
-      ;;
-  esac
+  plan_status="$(workflow_definition_artifact_sync_status_line "implementation_plan" "$ticket_status" || true)"
+  if [ -n "$plan_status" ] && [ -f "$plan_path" ]; then
+    perl -0pi -e 's/^- Status: .*$/- Status: `'"$plan_status"'`/m' "$plan_path"
+  fi
 }
 
 apply_schema_file() {
@@ -942,7 +1005,7 @@ verify_ticket_internal() {
         issues=1
       fi
     fi
-    if status_for_code_review_timestamp "$status" && [ ! -f "$work_dir/review.md" ]; then
+    if workflow_definition_artifact_required_from_status "review" "$status" && [ ! -f "$work_dir/review.md" ]; then
       echo "missing review.md in $(basename "$work_dir")"
       issues=1
     fi
@@ -969,14 +1032,7 @@ verify_ticket_internal() {
       fi
 
       proposal_status="$(extract_status_line "$work_dir/proposal.md")"
-      case "$status" in
-        proposal_pending_approval) expected_proposal_status="proposal_pending_approval" ;;
-        decomposed) expected_proposal_status="decomposed" ;;
-        proposal_approved|plan_pending_approval|plan_approved|implementation_complete|code_review_approved|uat_generated)
-          expected_proposal_status="proposal_approved"
-          ;;
-        *) expected_proposal_status="" ;;
-      esac
+      expected_proposal_status="$(workflow_definition_artifact_sync_status_line "proposal" "$status" || true)"
       if [ -n "$expected_proposal_status" ] && [ "$proposal_status" != "$expected_proposal_status" ]; then
         echo "proposal.md status '$proposal_status' should be '$expected_proposal_status'"
         issues=1
@@ -995,10 +1051,11 @@ verify_ticket_internal() {
         issues=1
       fi
 
-      if ticket_status_at_least "$status" "plan_pending_approval"; then
+      expected_proposal_status="$(workflow_definition_artifact_sync_status_line "implementation_plan" "$status" || true)"
+      if [ -n "$expected_proposal_status" ]; then
         plan_status="$(extract_status_line "$work_dir/implementation-plan.md")"
-        if [ "$plan_status" != "$status" ]; then
-          echo "implementation-plan.md status '$plan_status' should be '$status'"
+        if [ "$plan_status" != "$expected_proposal_status" ]; then
+          echo "implementation-plan.md status '$plan_status' should be '$expected_proposal_status'"
           issues=1
         fi
       fi
@@ -1182,7 +1239,7 @@ ticket_missing_artifacts() {
   if { workflow_definition_exists && workflow_definition_artifact_required_from_status "validation" "$status"; } || { ! workflow_definition_exists && ticket_status_at_least "$status" "implementation_complete"; }; then
     [ -f "$work_dir/validation.md" ] || missing+=("validation.md")
   fi
-  if ticket_status_at_least "$status" "implementation_complete" && [ ! -f "$work_dir/review.md" ]; then
+  if workflow_definition_artifact_required_from_status "review" "$status" && [ ! -f "$work_dir/review.md" ]; then
     missing+=("review.md")
   fi
   if { workflow_definition_exists && workflow_definition_artifact_required_from_status "uat" "$status"; } || { ! workflow_definition_exists && [ "$status" = "uat_generated" ]; }; then

@@ -7,6 +7,18 @@ protocol into a specific tool's trigger format, prompt format, or skill system.
 Adapters must not redefine gate policy, source-of-truth hierarchy, or done
 criteria.
 
+The installed brownfield template currently ships two adapter overlays:
+
+- `codex`: richer repo-local skills and delegated-agent support
+- `copilot`: thinner repo-local instruction and adapter-reference support
+
+Future adapters must stay additive and should not be treated as available in an
+installed repo until their overlay and CLI support ship.
+
+Copilot support is intentionally thinner than Codex. It should still follow the
+same shared workflow contract and runtime commands instead of inventing a
+separate phase model.
+
 Workflow routing truth lives in `.harness/raw-prompt-router.yml`,
 `.harness/freestyle-promotion.yml`, `.harness/workflow-selection.yml`,
 `.harness/freestyle-mode.yml`, `docs/RAW_PROMPT_ROUTER.md`,

@@ -8,5 +8,6 @@ This file maps the major Harness surfaces to their responsibilities.
 | Project context | `docs/PROJECT_PROFILE.md`, `docs/ARCHITECTURE.md`, `docs/product/*` | Explains repo-specific stack, boundaries, and current product contract. |
 | Work records | `docs/tickets/*`, `docs/work/*`, `docs/decisions/*` | Stores requirements, work packets, validation evidence, and durable decisions. |
 | Durable layer | `scripts/harness`, `scripts/schema/*`, `harness.db` | Stores and queries operational state as a local cache. |
-| Adapters | `docs/HARNESS_SKILLS.md`, `.codex/skills/*`, `.codex/agents/*`, `docs/agent-adapters/README.md` | Maps the portable workflow onto specific agent tooling. |
+| Adapter boundary | `docs/AGENT_PROTOCOL.md`, `docs/agent-adapters/README.md` | Defines what stays in the shared Harness contract versus what belongs in tool-specific overlays. |
+| Adapters | `docs/HARNESS_SKILLS.md`, `.codex/skills/*`, `.codex/agents/*`, `docs/agent-adapters/README.md` | Maps the portable workflow onto specific agent tooling without replacing shared workflow truth. |
 | Observability | decisions, work packets, validation evidence, and current Harness docs | Preserves execution evidence and process gaps for later improvement. |

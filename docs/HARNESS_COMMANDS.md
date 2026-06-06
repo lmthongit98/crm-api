@@ -34,7 +34,8 @@ Top-level commands:
 
 ## Runtime State
 
-- Default database path: `HARNESS_DB` if set, otherwise `./harness.db`
+- Default database path: `HARNESS_DB` if set, otherwise the installed repo's
+  `harness.db`
 - Installed schema directory: `scripts/schema/`
 - Local database tables:
   - `schema_version`
@@ -247,6 +248,8 @@ Behavior:
 
 - writes the matching approval timestamp
 - syncs the resulting status into work packet files
+- requires `docs/work/<ticket-id>-*/review.md` with a matching ticket ID before
+  `--gate code_review` succeeds
 - rejects decomposed parent tickets
 
 ## Verification Commands

@@ -5,14 +5,18 @@ contract_status: active
 
 statuses:
   ticket_loaded:
+    rank: 1
     next_phase: lane-dependent-entry
     description: Ticket exists and runtime state is loaded, but no tracked work packet phase is complete yet.
   analysis_complete:
+    rank: 2
     next_phase: proposal
     description: Analysis exists and the next durable phase is proposal.
   proposal_pending_approval:
+    rank: 3
     next_phase: approval:proposal
     description: Proposal exists and is waiting for explicit human approval.
+    required_approval_timestamps: []
     manual_update:
       allowed_from:
         - analysis_complete
@@ -26,11 +30,16 @@ statuses:
       required_artifact: proposal.md
       required_artifact_status: proposal_pending_approval
   proposal_approved:
+    rank: 4
     next_phase: implementation-plan
     description: Proposal is approved and the next durable phase is implementation planning.
+    required_approval_timestamps:
+      - proposal
   decomposed:
+    rank: 5
     next_phase: children
     description: Parent ticket has decomposed into child tickets and should route execution away from the parent.
+    required_approval_timestamps: []
     manual_update:
       allowed_from:
         - proposal_pending_approval
@@ -39,8 +48,11 @@ statuses:
       requires_parent_role: true
       requires_child_tickets: true
   plan_pending_approval:
+    rank: 6
     next_phase: approval:plan
     description: Implementation plan exists and is waiting for explicit human approval.
+    required_approval_timestamps:
+      - proposal
     manual_update:
       allowed_from:
         - proposal_approved
@@ -48,30 +60,50 @@ statuses:
       required_artifact_status: plan_pending_approval
       disallow_parent_role: true
   plan_approved:
+    rank: 7
     next_phase: implementation
     description: Implementation may proceed in product code with validation evidence prepared afterward.
+    required_approval_timestamps:
+      - proposal
+      - plan
   implementation_complete:
+    rank: 8
     next_phase: review
     description: Implementation is complete and the next durable step is review before code review approval.
+    required_approval_timestamps:
+      - proposal
+      - plan
     manual_update:
       allowed_from:
         - plan_approved
       required_artifact: validation.md
       disallow_parent_role: true
   code_review_approved:
+    rank: 9
     next_phase: done-or-optional-uat
     description: Code review approval passed and the shared runtime allows optional UAT afterward.
+    required_approval_timestamps:
+      - proposal
+      - plan
+      - code_review
   uat_generated:
+    rank: 10
     next_phase: done
     description: Optional UAT artifact exists and the tracked runtime is complete.
+    required_approval_timestamps:
+      - proposal
+      - plan
+      - code_review
     manual_update:
       allowed_from:
         - code_review_approved
       required_artifact: uat.md
       disallow_parent_role: true
   blocked:
+    rank: 0
     next_phase: blocked
     description: Ticket is blocked and must be repaired explicitly before normal execution resumes.
+    required_approval_timestamps: []
     manual_update:
       allowed_from: any
 
@@ -134,6 +166,7 @@ artifacts:
       - tiny
       - normal-fast
     phase_owner: analysis
+    default_exists_status: analysis_complete
   proposal:
     required_from_status:
       - proposal_pending_approval
@@ -146,6 +179,18 @@ artifacts:
       - uat_generated
     optional_for_lanes: []
     phase_owner: proposal
+    default_exists_status: proposal_pending_approval
+    status_line_advances_to:
+      proposal_approved: proposal_approved
+    sync_status_line_from_ticket_status:
+      proposal_pending_approval: proposal_pending_approval
+      decomposed: decomposed
+      proposal_approved: proposal_approved
+      plan_pending_approval: proposal_approved
+      plan_approved: proposal_approved
+      implementation_complete: proposal_approved
+      code_review_approved: proposal_approved
+      uat_generated: proposal_approved
   implementation_plan:
     required_from_status:
       - plan_pending_approval
@@ -155,6 +200,19 @@ artifacts:
       - uat_generated
     optional_for_lanes: []
     phase_owner: implementation_plan
+    default_exists_status: plan_pending_approval
+    status_line_advances_to:
+      plan_pending_approval: plan_pending_approval
+      plan_approved: plan_approved
+      implementation_complete: implementation_complete
+      code_review_approved: code_review_approved
+      uat_generated: uat_generated
+    sync_status_line_from_ticket_status:
+      plan_pending_approval: plan_pending_approval
+      plan_approved: plan_approved
+      implementation_complete: implementation_complete
+      code_review_approved: code_review_approved
+      uat_generated: uat_generated
   validation:
     required_from_status:
       - implementation_complete
@@ -223,6 +281,6 @@ workflow_type_bindings:
     contract_reference: .harness/bug-fix-workflow.yml
 
 current_mvp_boundary:
-  runtime_reads_shell_logic: scripts/harness now consumes selected rules from this file for lane-based entry, next-phase mapping, gate checks, artifact timing, manual ticket-update transitions, and workflow-type-specific scaffold template selection, but it still keeps part of the workflow logic in shell code.
+  runtime_reads_shell_logic: scripts/harness now consumes selected rules from this file for lane-based entry, status ordering, approval-timestamp expectations, next-phase mapping, gate checks, artifact timing, artifact status-line synchronization, manual ticket-update transitions, and workflow-type-specific scaffold template selection, but it still keeps part of the workflow logic in shell code.
   contract_role: This file is the installed machine-readable definition for adapters, docs, and future runtime migration work.
   not_yet_data_driven: The MVP runtime is not yet fully data-driven by workflow-definition.yml.

@@ -9,6 +9,38 @@ Harness is an operating model for agent-assisted software delivery.
 
 The product is what users touch. The harness is what agents touch.
 
+## Shared Versus Adapter Boundary
+
+Harness separates the shared workflow contract from adapter-specific execution
+surfaces.
+
+The shared contract is the installed repo-local operating truth:
+
+- tracked workflow docs under `docs/`
+- machine-readable workflow and routing files under `.harness/`
+- the repo-local runtime entrypoint `scripts/harness`
+- tracked ticket, work, product, and decision records
+
+Adapter surfaces are tool-specific translation layers such as repo-local
+skills, prompt snippets, delegated-agent configs, or editor instructions.
+
+Adapters may:
+
+- change how the tool is prompted or invoked
+- map tool-local concepts onto Harness phases
+- point the tool back to shared Harness docs and runtime commands
+
+Adapters must not:
+
+- redefine workflow phases, approval gates, route labels, or done criteria
+- replace tracked markdown or `.harness/*.yml` as the workflow source of truth
+- create tool-only artifact names when the shared workflow already defines the
+  required output
+- weaken explicit human approval requirements
+
+When a needed rule would affect more than one tool, add it to the shared
+Harness contract first and let adapters inherit it.
+
 ## Source Of Truth
 
 Tracked markdown is the portable source of truth for team workflows:
@@ -99,6 +131,9 @@ workflow selection, risk lanes, and hard escalation rules live in
 `docs/WORKFLOW_TRIGGERS.md`, `docs/WORKFLOW_SELECTION.md`,
 `docs/WORKFLOW_DEFINITION.md`, `docs/BUG_FIX_WORKFLOW.md`, and
 `docs/REVIEW_WORKFLOW.md`.
+
+Adapter-specific docs may explain how one tool consumes this contract, but they
+must point back here instead of restating incompatible workflow rules.
 
 At raw-requirement intake and during analysis, agents must ask follow-up
 questions when important concepts, business rules, or scope statements remain

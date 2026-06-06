@@ -4,6 +4,9 @@ This document maps the agent-neutral Harness workflow to Codex phase skills and
 delegated specialist agents. `docs/AGENT_PROTOCOL.md` is the workflow source of
 truth; `.codex/skills/*` are Codex adapters for this repository.
 
+This file is Codex-specific. It should explain how Codex consumes the shared
+Harness contract, not redefine workflow policy for other adapters.
+
 ## Install Shape
 
 Phase skills live in:

@@ -34,8 +34,9 @@ This file does not mean the installed runtime is already fully data-driven.
 Today:
 
 - `scripts/harness` now consumes selected rules from this file for lane-based
-  entry, next-phase mapping, gate checks, artifact timing, manual ticket-update
-  transitions, and workflow-type scaffold template selection
+  entry, status ordering, approval timestamp expectations, next-phase mapping,
+  gate checks, artifact timing, artifact status-line synchronization, manual
+  ticket-update transitions, and workflow-type scaffold template selection
 - some workflow behavior still remains in shell logic
 - adapters and future runtime work should prefer this file over reverse
   engineering prose docs
@@ -54,7 +55,11 @@ Today:
 Read `.harness/workflow-definition.yml` when you need a compact answer for:
 
 - whether `analysis` is required for the current lane
+- which tracked statuses count as later-than or earlier-than others
+- which approval timestamps must exist for the current status
 - which file `ticket start-phase` scaffolds for a phase
 - which workflow type overrides the default scaffold path for that phase
 - which gate must pass before the next durable phase
+- how `proposal.md` or `implementation-plan.md` status lines should sync to the
+  current ticket status
 - which workflow types use generic vs bug-fix templates
