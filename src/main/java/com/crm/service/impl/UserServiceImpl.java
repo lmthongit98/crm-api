@@ -35,6 +35,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -151,6 +152,25 @@ public class UserServiceImpl implements UserService {
             logger.error("Fail to load file", e);
         }
         return null;
+    }
+
+    @Override
+    public List<com.crm.dto.UserExportRow> exportAllNonDeletedUsers() {
+        List<User> users = userRepository.findAllNonDeletedWithGroupRoles();
+        return users.stream().map(u -> {
+            List<String> roles = List.of();
+            if (u.getGroup() != null && u.getGroup().getRoles() != null && !u.getGroup().getRoles().isEmpty()) {
+                roles = u.getGroup().getRoles().stream().map(r -> r.getName().name()).collect(Collectors.toList());
+            }
+            return com.crm.dto.UserExportRow.builder()
+                    .id(u.getId())
+                    .username(u.getUsername())
+                    .email(u.getEmail())
+                    .firstName(u.getFirstName())
+                    .lastName(u.getLastName())
+                    .roles(roles)
+                    .build();
+        }).collect(Collectors.toList());
     }
 
     private UserResponseDto mapToDto(User user) {

@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.Optional;
+import java.util.List;
 
 public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT u FROM User u LEFT JOIN FETCH u.group g LEFT JOIN FETCH g.roles WHERE u.username = ?1")
@@ -19,6 +20,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query("SELECT u FROM User u LEFT JOIN FETCH u.group g LEFT JOIN FETCH g.roles WHERE u.username = ?1 AND u.status = ?2")
     Optional<User> findByUsernameAndStatus(String username, UserStatus active);
+
+    @Query("SELECT DISTINCT u FROM User u LEFT JOIN FETCH u.group g LEFT JOIN FETCH g.roles WHERE u.status != 'DELETED'")
+    List<User> findAllNonDeletedWithGroupRoles();
 
     @Query("SELECT u FROM User u WHERE " +
             "(u.username LIKE CONCAT('%', :searchKey, '%') OR " +

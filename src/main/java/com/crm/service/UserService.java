@@ -10,6 +10,7 @@ import com.crm.model.User;
 import org.springframework.core.io.Resource;
 
 import java.util.List;
+import com.crm.dto.UserExportRow;
 
 public interface UserService {
     UserResponseDto save(UserRequestDto userRequestDto);
@@ -29,4 +30,6 @@ public interface UserService {
     AbstractResponseDto<UserResponseDto> searchUsers(String searchKey, int pageNo, int pageSize, String sortBy, String sortDir);
 
     Resource loadUserAvatarImg(Long id, String fileName);
+
+    List<UserExportRow> exportAllNonDeletedUsers();
 }

@@ -28,6 +28,11 @@ import org.springframework.util.StringUtils;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.io.PrintWriter;
+import com.crm.common.util.CsvUtils;
+import com.crm.dto.UserExportRow;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -138,6 +143,24 @@ public class UserController {
     public Object findRoleByUserId(@PathVariable("user-id") @NotNull Long userId) {
         UserWithRolesDto userWithRolesDto = userService.findUserWithRolesById(userId);
         return new ResponseEntity<>(userWithRolesDto, HttpStatus.OK);
+    }
+
+    @Operation(summary = "Export users as CSV")
+    @SecurityRequirement(name = "Bear Authentication")
+    @HasAnyPermissions(permissions = Permission.USER_VIEW)
+    @GetMapping("/export")
+    public void exportUsers(HttpServletResponse response) throws IOException {
+        response.setContentType("text/csv");
+        response.setHeader("Content-Disposition", "attachment; filename=\"users-export.csv\"");
+        List<UserExportRow> rows = userService.exportAllNonDeletedUsers();
+        try (PrintWriter writer = response.getWriter()) {
+            CsvUtils.writeRow(writer, List.of("id", "username", "email", "firstName", "lastName", "roles"));
+            for (UserExportRow r : rows) {
+                List<String> roleList = r.getRoles() == null ? List.of() : r.getRoles();
+                String roles = String.join(",", roleList);
+                CsvUtils.writeRow(writer, List.of(String.valueOf(r.getId()), r.getUsername(), r.getEmail(), r.getFirstName(), r.getLastName(), roles));
+            }
+        }
     }
 
     @Operation(summary = "Delete users by ids")
